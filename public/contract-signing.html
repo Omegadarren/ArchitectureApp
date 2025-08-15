@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contract Signing - Omega Builders</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.1.3/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Great+Vibes&family=Kaushan+Script&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+        }
+        
+        .signature-style-1 {
+            font-family: 'Kaushan Script', cursive !important;
+            font-size: 1.4rem !important;
+        }
+        
+        .contract-container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            max-width: 900px;
+            padding: 40px;
+        }
+        
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        
+        .status-signed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .status-draft {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .full-contract-content {
+            margin: 30px 0;
+            padding: 30px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .signing-notice {
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border: 2px solid #2196f3;
+            border-radius: 12px;
+            padding: 25px;
+            margin: 30px 0;
+            text-align: center;
+        }
+        
+        .signing-notice h4 {
+            color: #0d47a1;
+            margin-bottom: 15px;
+            font-size: 1.3rem;
+        }
+        
+        .signing-notice p {
+            color: #1565c0;
+            font-size: 1.1rem;
+            font-weight: 500;
+            margin-bottom: 0;
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 30px;
+            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .btn-success:hover {
+            background: linear-gradient(135deg, #218838 0%, #1c7430 100%);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(40, 167, 69, 0.6);
+            font-size: 1.1rem;
+            border-radius: 25px;
+        }
+        
+        .alert-success {
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #6c757d;
+        }
+        
+        .error {
+            text-align: center;
+            padding: 50px;
+            color: #dc3545;
+        }
+        
+        /* Mobile responsive improvements */
+        @media (max-width: 768px) {
+            .contract-container {
+                margin: 10px;
+                padding: 20px;
+            }
+            
+            .row {
+                flex-direction: column;
+            }
+            
+            .col-md-6 {
+                margin-bottom: 15px;
+            }
+            
+            .signature-style-1 {
+                font-size: 1.2rem !important;
+            }
+            
+            .btn-success {
+                width: 100%;
+                padding: 15px;
+                font-size: 1.2rem;
+            }
+            
+            .form-control {
+                font-size: 16px; /* Prevents zoom on iOS */
+            }
+        }
+        
+        /* Improved form styling */
+        .form-control:focus {
+            border-color: #28a745;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+        }
+        
+        .signature-style-1:focus {
+            border-color: #28a745 !important;
+            box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25) !important;
+        }
+        
+        /* Loading state */
+        .btn-success:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="contract-container">
+            <div class="text-center mb-4">
+                <h1 style="color: #007bff; margin-bottom: 10px;">OMEGA BUILDERS, LLC</h1>
+                <div style="height: 2px; background: #007bff; margin: 15px auto; width: 200px;"></div>
+                <h3 style="color: #6c757d;">Contract Digital Signing</h3>
+            </div>
+            
+            <div id="loading-message" class="loading">
+                <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
+                <p>Loading your contract...</p>
+            </div>
+            
+            <div id="error-message" class="error" style="display: none;">
+                <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                <p>Contract not found or already signed.</p>
+            </div>
+            
+            <div id="contract-content" style="display: none;">
+                <!-- Contract content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        class ContractSigning {
+            constructor() {
+                this.contractId = null;
+                this.contract = null;
+                this.init();
+            }
+
+            async init() {
+                // Get contract ID from URL path or query parameter
+                const pathParts = window.location.pathname.split('/');
+                let contractIdFromPath = pathParts[pathParts.length - 1];
+                
+                // If the path ends with .html, check query parameters instead
+                if (contractIdFromPath.includes('.html') || contractIdFromPath === 'contract-signing') {
+                    const urlParams = new URLSearchParams(window.location.search);
+                    this.contractId = urlParams.get('contractId');
+                } else {
+                    this.contractId = contractIdFromPath;
+                }
+                
+                if (!this.contractId || this.contractId === 'contract-signing') {
+                    this.showError('Contract ID not found in URL');
+                    return;
+                }
+                
+                console.log('Contract ID:', this.contractId);
+                await this.loadContract();
+            }
+
+            async loadContract() {
+                try {
+                    const response = await fetch(`/api/contracts/${this.contractId}`);
+                    
+                    if (!response.ok) {
+                        throw new Error('Contract not found');
+                    }
+
+                    this.contract = await response.json();
+                    console.log('Loaded contract:', this.contract);
+                    
+                    if (this.contract.ContractStatus === 'Signed') {
+                        this.showSignedContract();
+                    } else {
+                        this.showUnsignedContract();
+                    }
+                    
+                    document.getElementById('loading-message').style.display = 'none';
+                    document.getElementById('contract-content').style.display = 'block';
+                    
+                } catch (error) {
+                    console.error('Error loading contract:', error);
+                    this.showError('Unable to load contract. Please check the link and try again.');
+                }
+            }
+
+            showError(message) {
+                document.getElementById('loading-message').style.display = 'none';
+                document.getElementById('error-message').style.display = 'block';
+                document.querySelector('#error-message p').textContent = message;
+            }
+
+            showSignedContract() {
+                document.getElementById('contract-content').innerHTML = `
+                    <div class="alert alert-success text-center">
+                        <i class="fas fa-check-circle fa-3x mb-3"></i>
+                        <h4>Contract Already Signed!</h4>
+                        <p>This contract was digitally signed on <strong>${this.formatDate(this.contract.SignedDate)}</strong>.</p>
+                        <p>Both parties have received copies via email.</p>
+                    </div>
+                    
+                    <div class="text-center mt-4">
+                        <h5>${this.contract.ContractNumber} - ${this.contract.ProjectName}</h5>
+                        <p class="text-muted">Customer: ${this.contract.CompanyName}</p>
+                    </div>
+                `;
+            }
+
+            showUnsignedContract() {
+                document.getElementById('contract-content').innerHTML = `
+                    <!-- Important Notice -->
+                    <div class="signing-notice">
+                        <h4><i class="fas fa-file-contract"></i> Ready to Sign Your Contract</h4>
+                        <p>Please review the complete contract below and proceed to the signature section when ready.</p>
+                        <p><strong>Once signed, the fully executed contract will be automatically emailed to you and our office.</strong></p>
+                    </div>
+                    
+                    <!-- Full Contract Content -->
+                    <div class="full-contract-content" id="full-contract">
+                        <div style="text-align: center; margin-bottom: 30px;">
+                            <i class="fas fa-spinner fa-spin fa-2x"></i>
+                            <p>Loading contract details...</p>
+                        </div>
+                    </div>
+                    
+                    <!-- Digital Signature Section -->
+                    <div style="background: linear-gradient(135deg, #f8fff8 0%, #e8f5e8 100%); padding: 30px; border-radius: 12px; border: 2px solid #28a745; margin-top: 30px;">
+                        <h4 style="color: #28a745; margin-bottom: 20px;"><i class="fas fa-signature"></i> Digital Signature Required</h4>
+                        
+                        <div class="alert alert-warning">
+                            <h6><i class="fas fa-exclamation-triangle"></i> Before You Sign:</h6>
+                            <p class="mb-0">Please carefully review the complete contract above. By providing your digital signature below, you acknowledge that you have read, understood, and agree to all terms and conditions outlined in this contract.</p>
+                        </div>
+                        
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="signatureAgreement" onchange="contractSigning.toggleSignatureFields()">
+                            <label class="form-check-label" for="signatureAgreement">
+                                <strong>I have reviewed the complete contract above and agree to the following:</strong>
+                                <ul style="margin-top: 10px; margin-bottom: 0;">
+                                    <li>My typed name below will represent my legal signature on this contract</li>
+                                    <li>This electronic signature has the same legal effect as a handwritten signature</li>
+                                    <li>I have read, understood, and agree to all terms and conditions</li>
+                                    <li>I am authorized to enter into this contract on behalf of the client</li>
+                                </ul>
+                            </label>
+                        </div>
+                        
+                        <div id="signature-fields" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Full Name *</strong></label>
+                                        <input type="text" class="form-control" id="signerName" placeholder="Enter your full legal name">
+                                        <small class="text-muted">This will be your legal signature on the contract</small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label class="form-label"><strong>Title/Position</strong></label>
+                                        <input type="text" class="form-control" id="signerTitle" placeholder="Your title or position (optional)">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <label class="form-label"><strong>Digital Signature Preview</strong></label>
+                                <div class="form-control signature-style-1" style="height: 80px; font-size: 1.8rem; display: flex; align-items: center; background-color: #f8f9fa; color: #6c757d;" id="signature-preview">
+                                    Your signature will appear here...
+                                </div>
+                                <small class="text-muted">This preview shows how your signature will appear on the contract</small>
+                            </div>
+                            
+                            <div class="text-center">
+                                <button type="button" class="btn btn-success btn-lg" id="sign-button" onclick="contractSigning.signContract()" disabled>
+                                    <i class="fas fa-pen-fancy"></i> Sign Contract Digitally
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                // Load the full contract content
+                this.loadFullContract();
+                
+                // Add event listener for name input
+                setTimeout(() => {
+                    const nameInput = document.getElementById('signerName');
+                    if (nameInput) {
+                        nameInput.addEventListener('input', () => this.updateSignaturePreview());
+                    }
+                }, 100);
+            }
+
+            async loadFullContract() {
+                try {
+                    // Get the full contract HTML from the server
+                    const response = await fetch(`/api/contracts/${this.contractId}/full-html`);
+                    if (response.ok) {
+                        const contractHtml = await response.text();
+                        document.getElementById('full-contract').innerHTML = contractHtml;
+                    } else {
+                        document.getElementById('full-contract').innerHTML = `
+                            <div class="alert alert-warning">
+                                <h5>Contract Details</h5>
+                                <p><strong>Contract:</strong> ${this.contract.ContractNumber}</p>
+                                <p><strong>Project:</strong> ${this.contract.ProjectName}</p>
+                                <p><strong>Customer:</strong> ${this.contract.CompanyName}</p>
+                                <p><strong>Amount:</strong> $${this.formatCurrency(this.contract.ContractAmount)}</p>
+                                <p class="mb-0">Full contract details are available in the email you received.</p>
+                            </div>
+                        `;
+                    }
+                } catch (error) {
+                    console.error('Error loading full contract:', error);
+                    document.getElementById('full-contract').innerHTML = `
+                        <div class="alert alert-info">
+                            <h5>Contract Summary</h5>
+                            <p><strong>Contract:</strong> ${this.contract.ContractNumber}</p>
+                            <p><strong>Project:</strong> ${this.contract.ProjectName}</p>
+                            <p><strong>Customer:</strong> ${this.contract.CompanyName}</p>
+                            <p><strong>Amount:</strong> $${this.formatCurrency(this.contract.ContractAmount)}</p>
+                        </div>
+                    `;
+                }
+            }
+            
+            updateSignaturePreview() {
+                const signerName = document.getElementById('signerName')?.value.trim() || '';
+                const preview = document.getElementById('signature-preview');
+                if (preview) {
+                    if (signerName) {
+                        preview.textContent = signerName;
+                        preview.style.color = '#28a745';
+                    } else {
+                        preview.textContent = 'Your signature will appear here...';
+                        preview.style.color = '#6c757d';
+                    }
+                    
+                    // Enable/disable sign button
+                    const signButton = document.getElementById('sign-button');
+                    const checkbox = document.getElementById('signatureAgreement');
+                    if (signButton) {
+                        signButton.disabled = !(signerName && checkbox?.checked);
+                    }
+                }
+            }
+
+            toggleSignatureFields() {
+                const checkbox = document.getElementById('signatureAgreement');
+                const signatureFields = document.getElementById('signature-fields');
+                
+                if (checkbox && checkbox.checked) {
+                    signatureFields.style.display = 'block';
+                    // Update the signature preview
+                    this.updateSignaturePreview();
+                } else {
+                    signatureFields.style.display = 'none';
+                }
+            }
+
+            async signContract() {
+                try {
+                    const signerName = document.getElementById('signerName').value.trim();
+                    const signerTitle = document.getElementById('signerTitle').value.trim();
+                    const agreed = document.getElementById('signatureAgreement').checked;
+
+                    console.log('📝 Attempting to sign contract...');
+
+                    if (!agreed) {
+                        alert('Please check the signature agreement checkbox first.');
+                        return;
+                    }
+
+                    if (!signerName) {
+                        alert('Please enter your full legal name.');
+                        document.getElementById('signerName').focus();
+                        return;
+                    }
+
+                    // Show signing in progress
+                    const signButton = document.getElementById('sign-button');
+                    const originalButtonText = signButton.innerHTML;
+                    signButton.disabled = true;
+                    signButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing Contract...';
+
+                    const requestData = {
+                        clientSignature: signerName,
+                        clientTitle: signerTitle,
+                        clientDate: new Date().toISOString().split('T')[0],
+                        signedTimestamp: new Date().toISOString(),
+                        ipAddress: await this.getClientIP()
+                    };
+
+                    console.log('📤 Sending signature data:', {
+                        clientSignature: '[PROVIDED]',
+                        clientDate: requestData.clientDate,
+                        signedTimestamp: requestData.signedTimestamp,
+                        ipAddress: requestData.ipAddress
+                    });
+
+                    const response = await fetch(`/api/contracts/${this.contractId}/customer-signature`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'
+                        },
+                        body: JSON.stringify(requestData)
+                    });
+
+                    console.log('📥 Response status:', response.status, response.statusText);
+
+                    let responseData;
+                    const responseText = await response.text();
+                    
+                    try {
+                        responseData = JSON.parse(responseText);
+                    } catch (parseError) {
+                        console.error('❌ Failed to parse response as JSON:', responseText);
+                        throw new Error('Server response was not valid JSON: ' + responseText.substring(0, 100));
+                    }
+
+                    if (!response.ok) {
+                        console.error('❌ API Error Response:', responseData);
+                        
+                        let errorMessage = responseData.error || 'Unknown error occurred';
+                        if (responseData.field) {
+                            errorMessage += ` (Field: ${responseData.field})`;
+                        }
+                        
+                        throw new Error(errorMessage);
+                    }
+
+                    console.log('✅ Contract signed successfully:', responseData);
+
+                    // Show success message
+                    document.getElementById('contract-content').innerHTML = `
+                        <div class="alert alert-success text-center">
+                            <i class="fas fa-check-circle fa-3x mb-3" style="color: #28a745;"></i>
+                            <h4>Contract Signed Successfully!</h4>
+                            <p><strong>Contract:</strong> ${responseData.contractNumber}</p>
+                            <p><strong>Project:</strong> ${responseData.projectName}</p>
+                            <p><strong>Customer:</strong> ${responseData.customer}</p>
+                            <p><strong>Signed on:</strong> ${this.formatDate(responseData.signedDate)}</p>
+                            <div class="mt-4 p-3 bg-light rounded">
+                                <p class="mb-2"><i class="fas fa-envelope"></i> <strong>What happens next:</strong></p>
+                                <ul class="text-start" style="display: inline-block;">
+                                    <li>Both parties have been notified via email</li>
+                                    <li>Omega Builders will begin work as scheduled</li>
+                                    <li>You will receive project updates throughout</li>
+                                </ul>
+                            </div>
+                            <div class="mt-3">
+                                <p class="mb-0"><small class="text-muted">Thank you for choosing Omega Builders!</small></p>
+                            </div>
+                        </div>
+                    `;
+
+                } catch (error) {
+                    console.error('❌ Error signing contract:', error);
+                    
+                    // Re-enable the button
+                    const signButton = document.querySelector('.btn-success');
+                    if (signButton) {
+                        signButton.disabled = false;
+                        signButton.innerHTML = '<i class="fas fa-signature"></i> Sign Contract';
+                    }
+                    
+                    // Show user-friendly error
+                    let errorMessage = error.message;
+                    if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+                        errorMessage = 'Network connection issue. Please check your internet connection and try again.';
+                    } else if (errorMessage.includes('Contract not found')) {
+                        errorMessage = 'Contract not found. Please check the contract link or contact Omega Builders.';
+                    } else if (errorMessage.includes('already signed')) {
+                        errorMessage = 'This contract has already been signed.';
+                    }
+                    
+                    alert('Error signing contract: ' + errorMessage);
+                }
+            }
+
+            async getClientIP() {
+                try {
+                    console.log('🌐 Getting client IP address...');
+                    
+                    // Try multiple IP services for better reliability
+                    const ipServices = [
+                        'https://api.ipify.org?format=json',
+                        'https://ipapi.co/json/',
+                        'https://httpbin.org/ip'
+                    ];
+                    
+                    for (const service of ipServices) {
+                        try {
+                            console.log(`🔍 Trying IP service: ${service}`);
+                            const response = await fetch(service, { 
+                                timeout: 5000,
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            
+                            if (!response.ok) continue;
+                            
+                            const data = await response.json();
+                            let ip = data.ip || data.origin || null;
+                            
+                            if (ip) {
+                                console.log(`✅ Got IP address from ${service}:`, ip);
+                                return ip;
+                            }
+                        } catch (serviceError) {
+                            console.warn(`⚠️ IP service ${service} failed:`, serviceError.message);
+                            continue;
+                        }
+                    }
+                    
+                    // If all services fail, return a fallback
+                    console.warn('⚠️ All IP services failed, using fallback');
+                    return 'Unknown-External';
+                    
+                } catch (error) {
+                    console.error('❌ Error getting IP address:', error);
+                    return 'Unknown-Error';
+                }
+            }
+
+            formatDate(date) {
+                if (!date) return '';
+                return new Date(date).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+            }
+
+            formatCurrency(amount) {
+                if (!amount) return '0.00';
+                return parseFloat(amount).toLocaleString('en-US', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2
+                });
+            }
+        }
+
+        // Initialize when page loads
+        let contractSigning;
+        document.addEventListener('DOMContentLoaded', () => {
+            contractSigning = new ContractSigning();
+        });
+    </script>
+</body>
+</html>

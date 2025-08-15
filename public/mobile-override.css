@@ -1,0 +1,40 @@
+/* NUCLEAR MOBILE OVERRIDE - FORCE EVERYTHING */
+
+/* Force mobile styles on ALL screen sizes for testing */
+body {
+    font-size: 18px !important;
+    background: #ff0000 !important; /* Red background to confirm it's loading */
+}
+
+/* Hide ALL tables completely */
+table, .table, .table-responsive {
+    display: none !important;
+}
+
+/* Force show mobile content */
+.mobile-list {
+    display: block !important;
+    background: #00ff00 !important; /* Green background to confirm mobile list is showing */
+    padding: 20px !important;
+}
+
+/* Make navigation HUGE */
+.nav-tabs .nav-link {
+    min-height: 60px !important;
+    font-size: 20px !important;
+    background: #ffff00 !important; /* Yellow to confirm nav is working */
+    color: #000 !important;
+    margin: 5px !important;
+    padding: 20px !important;
+}
+
+/* Test message */
+.main-content::before {
+    content: "MOBILE CSS IS LOADED!" !important;
+    display: block !important;
+    background: #0000ff !important;
+    color: white !important;
+    padding: 20px !important;
+    font-size: 24px !important;
+    text-align: center !important;
+}

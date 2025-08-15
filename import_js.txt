@@ -1,0 +1,411 @@
+
+// Import Data Management
+initializeImportHandlers() {
+    // Template download handlers
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.template-btn') || e.target.closest('.template-btn')) {
+            const btn = e.target.matches('.template-btn') ? e.target : e.target.closest('.template-btn');
+            const type = btn.getAttribute('data-type');
+            this.downloadTemplate(type);
+        }
+    });
+
+    // Import button handlers  
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.import-btn') || e.target.closest('.import-btn')) {
+            const btn = e.target.matches('.import-btn') ? e.target : e.target.closest('.import-btn');
+            const type = btn.getAttribute('data-type');
+            this.openImportModal(type);
+        }
+    });
+
+    // Modal close handler
+    document.addEventListener('click', (e) => {
+        if (e.target.matches('.modal-close') || e.target.matches('.modal') && !e.target.closest('.modal-content')) {
+            this.closeImportModal();
+        }
+    });
+
+    // File input handler
+    const fileInput = document.getElementById('import-file-input');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+    }
+
+    // Drag and drop handlers
+    const uploadArea = document.getElementById('file-upload-area');
+    if (uploadArea) {
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+            });
+        });
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.add('dragover'));
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            uploadArea.addEventListener(eventName, () => uploadArea.classList.remove('dragover'));
+        });
+
+        uploadArea.addEventListener('drop', (e) => this.handleFileDrop(e));
+    }
+}
+
+async downloadTemplate(type) {
+    try {
+        const response = await fetch(`/api/import/templates/${type}/download`);
+        if (!response.ok) {
+            throw new Error('Failed to download template');
+        }
+        
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${type}_template.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        this.showToast(`${this.capitalizeFirst(type)} template downloaded successfully`, 'success');
+    } catch (error) {
+        console.error('Error downloading template:', error);
+        this.showToast('Failed to download template', 'error');
+    }
+}
+
+openImportModal(type) {
+    this.currentImportType = type;
+    this.currentImportStep = 1;
+    this.uploadedFileData = null;
+    
+    document.getElementById('import-modal-title').textContent = `Import ${this.capitalizeFirst(type)}`;
+    document.getElementById('import-modal').style.display = 'flex';
+    
+    // Reset modal to step 1
+    document.getElementById('import-step-1').style.display = 'block';
+    document.getElementById('import-step-2').style.display = 'none';
+    document.getElementById('import-step-3').style.display = 'none';
+    
+    // Reset buttons
+    document.getElementById('import-prev-btn').style.display = 'none';
+    document.getElementById('import-next-btn').style.display = 'inline-block';
+    document.getElementById('import-execute-btn').style.display = 'none';
+    
+    // Clear file input and info
+    document.getElementById('import-file-input').value = '';
+    document.getElementById('file-info').style.display = 'none';
+    document.getElementById('import-next-btn').disabled = true;
+}
+
+closeImportModal() {
+    document.getElementById('import-modal').style.display = 'none';
+    this.currentImportType = null;
+    this.uploadedFileData = null;
+}
+
+handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (file) {
+        this.processFile(file);
+    }
+}
+
+handleFileDrop(event) {
+    const file = event.dataTransfer.files[0];
+    if (file) {
+        this.processFile(file);
+    }
+}
+
+async processFile(file) {
+    try {
+        // Validate file type
+        const validTypes = ['.xlsx', '.xls', '.csv'];
+        const fileExtension = file.name.toLowerCase().substring(file.name.lastIndexOf('.'));
+        
+        if (!validTypes.includes(fileExtension)) {
+            throw new Error('Please select a valid Excel (.xlsx, .xls) or CSV file');
+        }
+        
+        // Show loading
+        this.showToast('Processing file...', 'info');
+        
+        // Upload and process file
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const response = await fetch('/api/import/upload', {
+            method: 'POST',
+            body: formData
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Failed to process file');
+        }
+        
+        this.uploadedFileData = await response.json();
+        this.displayFileInfo();
+        document.getElementById('import-next-btn').disabled = false;
+        
+        this.showToast('File processed successfully', 'success');
+        
+    } catch (error) {
+        console.error('Error processing file:', error);
+        this.showToast(error.message, 'error');
+        this.uploadedFileData = null;
+        document.getElementById('import-next-btn').disabled = true;
+    }
+}
+
+displayFileInfo() {
+    const fileInfo = document.getElementById('file-info');
+    const fileDetails = document.getElementById('file-details');
+    
+    fileDetails.innerHTML = `
+        <div class="file-detail-item">
+            <strong>Filename:</strong><br>
+            ${this.uploadedFileData.originalName}
+        </div>
+        <div class="file-detail-item">
+            <strong>Total Rows:</strong><br>
+            ${this.uploadedFileData.totalRows}
+        </div>
+        <div class="file-detail-item">
+            <strong>Columns:</strong><br>
+            ${this.uploadedFileData.headers.length}
+        </div>
+        <div class="file-detail-item">
+            <strong>Sheets:</strong><br>
+            ${this.uploadedFileData.sheetNames.join(', ')}
+        </div>
+    `;
+    
+    fileInfo.style.display = 'block';
+}
+
+async nextImportStep() {
+    if (this.currentImportStep === 1) {
+        // Move to column mapping
+        await this.showColumnMapping();
+        this.currentImportStep = 2;
+        
+        document.getElementById('import-step-1').style.display = 'none';
+        document.getElementById('import-step-2').style.display = 'block';
+        document.getElementById('import-prev-btn').style.display = 'inline-block';
+        document.getElementById('import-execute-btn').style.display = 'inline-block';
+        document.getElementById('import-next-btn').style.display = 'none';
+        
+    } else if (this.currentImportStep === 2) {
+        // Execute import
+        await this.executeImport();
+    }
+}
+
+previousImportStep() {
+    if (this.currentImportStep === 2) {
+        this.currentImportStep = 1;
+        
+        document.getElementById('import-step-1').style.display = 'block';
+        document.getElementById('import-step-2').style.display = 'none';
+        document.getElementById('import-prev-btn').style.display = 'none';
+        document.getElementById('import-execute-btn').style.display = 'none';
+        document.getElementById('import-next-btn').style.display = 'inline-block';
+    }
+}
+
+async showColumnMapping() {
+    const mappingContainer = document.getElementById('column-mapping');
+    
+    // Get field definitions for current import type
+    const templateResponse = await fetch('/api/import/templates');
+    const templates = await templateResponse.json();
+    const fields = templates[this.currentImportType]?.fields || {};
+    
+    // Create column mapping interface
+    let mappingHtml = '<div class="mapping-header"><h5>Map Excel columns to database fields:</h5></div>';
+    
+    Object.entries(fields).forEach(([fieldName, fieldInfo]) => {
+        const isRequired = fieldInfo.required ? '<span class="mapping-required">(Required)</span>' : '';
+        
+        mappingHtml += `
+            <div class="mapping-row">
+                <div class="mapping-field">
+                    ${fieldInfo.description} ${isRequired}
+                </div>
+                <div>
+                    <select class="mapping-select" data-field="${fieldName}" ${fieldInfo.required ? 'required' : ''}>
+                        <option value="">-- Select Column --</option>
+                        ${this.uploadedFileData.headers.map((header, index) => 
+                            `<option value="${index}">${header}</option>`
+                        ).join('')}
+                    </select>
+                </div>
+                <div class="mapping-description">
+                    ${fieldInfo.description}
+                </div>
+            </div>
+        `;
+    });
+    
+    mappingContainer.innerHTML = mappingHtml;
+    
+    // Show data preview
+    this.showDataPreview();
+}
+
+showDataPreview() {
+    const previewContainer = document.getElementById('import-preview');
+    const previewTable = document.getElementById('preview-table');
+    
+    if (this.uploadedFileData.preview && this.uploadedFileData.preview.length > 0) {
+        let tableHtml = '<table class="preview-table">';
+        
+        // Headers
+        tableHtml += '<thead><tr>';
+        this.uploadedFileData.preview[0].forEach(header => {
+            tableHtml += `<th>${header || 'Empty'}</th>`;
+        });
+        tableHtml += '</tr></thead>';
+        
+        // Data rows (first 5)
+        tableHtml += '<tbody>';
+        for (let i = 1; i < Math.min(6, this.uploadedFileData.preview.length); i++) {
+            tableHtml += '<tr>';
+            this.uploadedFileData.preview[i].forEach(cell => {
+                tableHtml += `<td>${cell || ''}</td>`;
+            });
+            tableHtml += '</tr>';
+        }
+        tableHtml += '</tbody></table>';
+        
+        previewTable.innerHTML = tableHtml;
+        previewContainer.style.display = 'block';
+    }
+}
+
+async executeImport() {
+    try {
+        // Collect column mappings
+        const mappings = {};
+        document.querySelectorAll('.mapping-select').forEach(select => {
+            const fieldName = select.getAttribute('data-field');
+            const columnIndex = select.value;
+            if (columnIndex !== '') {
+                mappings[fieldName] = parseInt(columnIndex);
+            }
+        });
+        
+        // Validate required fields
+        const templateResponse = await fetch('/api/import/templates');
+        const templates = await templateResponse.json();
+        const fields = templates[this.currentImportType]?.fields || {};
+        
+        const missingRequired = Object.entries(fields)
+            .filter(([fieldName, fieldInfo]) => fieldInfo.required && !mappings[fieldName])
+            .map(([fieldName, fieldInfo]) => fieldInfo.description);
+            
+        if (missingRequired.length > 0) {
+            throw new Error(`Please map the following required fields: ${missingRequired.join(', ')}`);
+        }
+        
+        // Show loading
+        this.showToast('Importing data...', 'info');
+        
+        // Execute import
+        const importData = {
+            filename: this.uploadedFileData.filename,
+            sheetName: this.uploadedFileData.sheetNames[0],
+            mapping: mappings,
+            startRow: 1
+        };
+        
+        const response = await fetch(`/api/import/${this.currentImportType}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(importData)
+        });
+        
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Import failed');
+        }
+        
+        const results = await response.json();
+        this.showImportResults(results);
+        
+        // Move to results step
+        this.currentImportStep = 3;
+        document.getElementById('import-step-2').style.display = 'none';
+        document.getElementById('import-step-3').style.display = 'block';
+        document.getElementById('import-prev-btn').style.display = 'none';
+        document.getElementById('import-execute-btn').style.display = 'none';
+        
+    } catch (error) {
+        console.error('Error during import:', error);
+        this.showToast(error.message, 'error');
+    }
+}
+
+showImportResults(results) {
+    const resultsContainer = document.getElementById('import-results');
+    
+    let resultsHtml = `
+        <div class="result-summary">
+            <div class="result-stat success">
+                <div class="result-stat-number">${results.imported}</div>
+                <div class="result-stat-label">Imported</div>
+            </div>
+            <div class="result-stat warning">
+                <div class="result-stat-number">${results.skipped}</div>
+                <div class="result-stat-label">Skipped</div>
+            </div>
+            <div class="result-stat error">
+                <div class="result-stat-number">${results.errors?.length || 0}</div>
+                <div class="result-stat-label">Errors</div>
+            </div>
+        </div>
+    `;
+    
+    if (results.errors && results.errors.length > 0) {
+        resultsHtml += `
+            <div class="error-details">
+                <h5>Errors Details:</h5>
+                <div class="error-list">
+                    ${results.errors.map(error => 
+                        `<div class="error-item">
+                            <strong>Row ${error.row}:</strong> ${error.error}
+                        </div>`
+                    ).join('')}
+                </div>
+            </div>
+        `;
+    }
+    
+    resultsContainer.innerHTML = resultsHtml;
+    
+    // Show success message
+    if (results.imported > 0) {
+        this.showToast(`Successfully imported ${results.imported} records`, 'success');
+        
+        // Refresh the relevant section if we're on it
+        if (this.currentImportType === 'customers' && this.currentSection === 'customers') {
+            this.loadCustomers();
+        } else if (this.currentImportType === 'projects' && this.currentSection === 'projects') {
+            this.loadProjects();
+        } else if (this.currentImportType === 'line-items' && this.currentSection === 'lineitems') {
+            this.loadLineItems();
+        }
+    }
+}
+
+capitalizeFirst(str) {
+    return str.charAt(0).toUpperCase() + str.slice(1).replace('-', ' ');
+}

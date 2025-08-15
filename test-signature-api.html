@@ -1,0 +1,37 @@
+// Test digital signature API endpoint
+async function testSignatureAPI() {
+    const contractId = 1; // Assuming we have a contract with ID 1
+    
+    const signatureData = {
+        contractorSignature: "Darren Anderson",
+        clientSignature: "Test Client",
+        contractorDate: "2025-08-11",
+        clientDate: "2025-08-11",
+        signedTimestamp: new Date().toISOString(),
+        ipAddress: "127.0.0.1"
+    };
+    
+    try {
+        const response = await fetch(`http://localhost:3000/contracts/${contractId}/signatures`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(signatureData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            console.log('✅ Signature API test successful:', result);
+        } else {
+            const error = await response.text();
+            console.log('❌ Signature API test failed:', response.status, error);
+        }
+        
+    } catch (error) {
+        console.error('❌ API test error:', error);
+    }
+}
+
+// Test the API
+testSignatureAPI();

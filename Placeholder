@@ -1,0 +1,1392 @@
+</div>
+                            
+                            <!-- Line Items Section -->
+                            <div class="line-items-container">
+                                <h4>Line Items</h4>
+                                <div id="line-items-list">
+                                    <!-- Line items will be added here -->
+                                </div>
+                                <button type="button" class="btn btn-secondary" onclick="app.addLineItem()">
+                                    <i class="fas fa-plus"></i> Add Line Item
+                                </button>
+                            </div>
+
+                            <!-- Totals -->
+                            <div class="line-item-totals">
+                                <div class="totals-row">
+                                    <span>Subtotal:</span>
+                                    <span id="estimate-subtotal">$0.00</span>
+                                </div>
+                                <div class="totals-row">
+                                    <span>Tax:</span>
+                                    <span id="estimate-tax">$0.00</span>
+                                </div>
+                                <div class="totals-row total">
+                                    <span>Total:</span>
+                                    <span id="estimate-total">$0.00</span>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="notes">Notes</label>
+                                <textarea id="notes" name="notes" class="form-control" rows="3">${estimate ? estimate.Notes || '' : ''}</textarea>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" onclick="app.saveEstimate(${isEdit ? estimate.EstimateID : 'null'})">
+                            ${isEdit ? 'Update' : 'Save'} Estimate
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modal-container').innerHTML = modalHtml;
+        
+        // Add initial line item
+        if (!isEdit || !estimate.lineItems || estimate.lineItems.length === 0) {
+            this.addLineItem();
+        } else {
+            estimate.lineItems.forEach((item, index) => {
+                this.addLineItem(item, index);
+            });
+        }
+        
+        this.calculateEstimateTotal();
+    }
+
+    addLineItem(existingItem = null, index = null) {
+        const lineItemsContainer = document.getElementById('line-items-list');
+        const itemIndex = index !== null ? index : lineItemsContainer.children.length;
+        
+        const lineItemOptions = this.data.lineItems.map(item => 
+            `<option value="${item.LineItemID}" data-rate="${item.StandardRate}" data-description="${item.ItemDescription}" 
+                     ${existingItem && existingItem.LineItemID === item.LineItemID ? 'selected' : ''}>
+                ${item.ItemCode} - ${item.ItemName} (${this.formatCurrency(item.StandardRate)})
+            </option>`
+        ).join('');
+
+        const lineItemHtml = `
+            <div class="line-item" data-index="${itemIndex}">
+                <div class="form-group">
+                    <label>Item</label>
+                    <select name="lineItems[${itemIndex}][lineItemId]" class="form-control line-item-select" onchange="app.updateLineItemDetails(this)">
+                        <option value="">Select line item...</option>
+                        ${lineItemOptions}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Quantity</label>
+                    <input type="number" name="lineItems[${itemIndex}][quantity]" class="form-control line-item-quantity" 
+                           step="0.01" min="0" value="${existingItem ? existingItem.Quantity : '1'}" onchange="app.calculateEstimateTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Unit Rate</label>
+                    <input type="number" name="lineItems[${itemIndex}][unitRate]" class="form-control line-item-rate" 
+                           step="0.01" min="0" value="${existingItem ? existingItem.UnitRate : '0'}" onchange="app.calculateEstimateTotal()">
+                </div>
+                <div class="form-group">
+                    <label>Total</label>
+                    <input type="text" class="form-control line-item-total" readonly value="$0.00">
+                </div>
+                <div class="form-group">
+                    <button type="button" class="btn btn-danger btn-sm" onclick="app.removeLineItem(this)" title="Remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Description</label>
+                    <input type="text" name="lineItems[${itemIndex}][itemDescription]" class="form-control" 
+                           value="${existingItem ? existingItem.ItemDescription || '' : ''}" placeholder="Item description">
+                </div>
+            </div>
+        `;
+        
+        lineItemsContainer.insertAdjacentHTML('beforeend', lineItemHtml);
+        this.calculateEstimateTotal();
+    }
+
+    updateLineItemDetails(selectElement) {
+        const selectedOption = selectElement.selectedOptions[0];
+        const lineItemDiv = selectElement.closest('.line-item');
+        
+        if (selectedOption && selectedOption.value) {
+            const rate = selectedOption.getAttribute('data-rate');
+            const description = selectedOption.getAttribute('data-description');
+            
+            lineItemDiv.querySelector('.line-item-rate').value = rate || '0';
+            lineItemDiv.querySelector('input[name$="[itemDescription]"]').value = description || '';
+        }
+        
+        this.calculateEstimateTotal();
+    }
+
+    removeLineItem(button) {
+        const lineItem = button.closest('.line-item');
+        lineItem.remove();
+        this.calculateEstimateTotal();
+    }
+
+    calculateEstimateTotal() {
+        const lineItems = document.querySelectorAll('.line-item');
+        let subtotal = 0;
+        
+        lineItems.forEach(item => {
+            const quantity = parseFloat(item.querySelector('.line-item-quantity').value) || 0;
+            const rate = parseFloat(item.querySelector('.line-item-rate').value) || 0;
+            const lineTotal = quantity * rate;
+            
+            item.querySelector('.line-item-total').value = this.formatCurrency(lineTotal);
+            subtotal += lineTotal;
+        });
+        
+        const taxRate = parseFloat(document.getElementById('taxRate')?.value) || 0.0875;
+        const taxAmount = subtotal * taxRate;
+        const total = subtotal + taxAmount;
+        
+        document.getElementById('estimate-subtotal').textContent = this.formatCurrency(subtotal);
+        document.getElementById('estimate-tax').textContent = this.formatCurrency(taxAmount);
+        document.getElementById('estimate-total').textContent = this.formatCurrency(total);
+    }
+
+    async saveEstimate(estimateId = null) {
+        const form = document.getElementById('estimate-form');
+        const formData = new FormData(form);
+        
+        // Collect line items
+        const lineItems = [];
+        const lineItemElements = document.querySelectorAll('.line-item');
+        
+        lineItemElements.forEach((item, index) => {
+            const lineItemId = item.querySelector(`select[name="lineItems[${index}][lineItemId]"]`)?.value;
+            const quantity = item.querySelector(`input[name="lineItems[${index}][quantity]"]`)?.value;
+            const unitRate = item.querySelector(`input[name="lineItems[${index}][unitRate]"]`)?.value;
+            const itemDescription = item.querySelector(`input[name="lineItems[${index}][itemDescription]"]`)?.value;
+            
+            if (lineItemId && quantity && unitRate) {
+                lineItems.push({
+                    lineItemId: parseInt(lineItemId),
+                    quantity: parseFloat(quantity),
+                    unitRate: parseFloat(unitRate),
+                    itemDescription
+                });
+            }
+        });
+
+        if (lineItems.length === 0) {
+            this.showToast('Please add at least one line item', 'error');
+            return;
+        }
+
+        const estimateData = Object.fromEntries(formData.entries());
+        estimateData.lineItems = lineItems;
+        estimateData.taxRate = parseFloat(estimateData.taxRate);
+
+        try {
+            const method = estimateId ? 'PUT' : 'POST';
+            const endpoint = estimateId ? `estimates/${estimateId}` : 'estimates';
+            
+            await this.apiCall(endpoint, method, estimateData);
+            
+            document.querySelector('.modal-overlay').remove();
+            this.loadEstimates();
+            this.showToast(`Estimate ${estimateId ? 'updated' : 'created'} successfully`, 'success');
+        } catch (error) {
+            console.error('Error saving estimate:', error);
+        }
+    }
+
+    // EXCEL IMPORT PROCESSING
+    showImportModal(type) {
+        const modalHtml = `
+            <div class="modal-overlay active">
+                <div class="modal" style="max-width: 900px;">
+                    <div class="modal-header">
+                        <h3>Import ${type.charAt(0).toUpperCase() + type.slice(1)}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="import-steps">
+                            <!-- Step 1: File Upload -->
+                            <div id="step-1" class="import-step active">
+                                <h4><i class="fas fa-upload"></i> Step 1: Upload File</h4>
+                                <div class="form-group">
+                                    <label for="import-file">Select Excel/CSV File</label>
+                                    <input type="file" id="import-file" class="form-control" accept=".xlsx,.xls,.csv">
+                                    <small class="text-muted">Supported formats: .xlsx, .xls, .csv (Max 10MB)</small>
+                                </div>
+                                <button type="button" id="upload-btn" class="btn btn-primary" onclick="app.uploadImportFile('${type}')" disabled>
+                                    <i class="fas fa-cloud-upload-alt"></i> Upload & Preview
+                                </button>
+                            </div>
+
+                            <!-- Step 2: Preview & Mapping -->
+                            <div id="step-2" class="import-step" style="display: none;">
+                                <h4><i class="fas fa-table"></i> Step 2: Preview & Map Columns</h4>
+                                <div id="file-preview-section">
+                                    <div class="preview-info">
+                                        <p><strong>File:</strong> <span id="preview-filename"></span></p>
+                                        <p><strong>Rows:</strong> <span id="preview-rows"></span></p>
+                                        <p><strong>Sheets:</strong> <span id="preview-sheets"></span></p>
+                                    </div>
+                                    
+                                    <div class="preview-table-container">
+                                        <h5>Data Preview (First 5 rows):</h5>
+                                        <div id="preview-table"></div>
+                                    </div>
+                                    
+                                    <div class="column-mapping-section">
+                                        <h5>Column Mapping:</h5>
+                                        <p class="text-muted">Map Excel columns to database fields. Required fields are marked with *</p>
+                                        <div id="column-mapping-container"></div>
+                                    </div>
+                                </div>
+                                
+                                <div class="step-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="app.goToImportStep(1)">
+                                        <i class="fas fa-arrow-left"></i> Back
+                                    </button>
+                                    <button type="button" id="validate-btn" class="btn btn-warning" onclick="app.validateImportData('${type}')">
+                                        <i class="fas fa-check-circle"></i> Validate Data
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Step 3: Validation Results -->
+                            <div id="step-3" class="import-step" style="display: none;">
+                                <h4><i class="fas fa-check-circle"></i> Step 3: Validation Results</h4>
+                                <div id="validation-results"></div>
+                                
+                                <div class="step-actions">
+                                    <button type="button" class="btn btn-secondary" onclick="app.goToImportStep(2)">
+                                        <i class="fas fa-arrow-left"></i> Back
+                                    </button>
+                                    <button type="button" id="import-btn" class="btn btn-success" onclick="app.processImportData('${type}')" disabled>
+                                        <i class="fas fa-database"></i> Import Data
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Step 4: Import Progress -->
+                            <div id="step-4" class="import-step" style="display: none;">
+                                <h4><i class="fas fa-spinner fa-spin"></i> Step 4: Importing Data</h4>
+                                <div class="import-progress-section">
+                                    <div class="progress-bar">
+                                        <div id="import-progress-fill" class="progress-fill" style="width: 0%;"></div>
+                                    </div>
+                                    <div id="import-status-text" class="import-status">Preparing import...</div>
+                                    <div id="import-details" class="import-details"></div>
+                                </div>
+                            </div>
+
+                            <!-- Step 5: Results -->
+                            <div id="step-5" class="import-step" style="display: none;">
+                                <h4><i class="fas fa-flag-checkered"></i> Import Complete</h4>
+                                <div id="import-results"></div>
+                                
+                                <div class="step-actions">
+                                    <button type="button" class="btn btn-primary" onclick="app.finishImport('${type}')">
+                                        <i class="fas fa-check"></i> Finish
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            Close
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modal-container').innerHTML = modalHtml;
+        
+        // Setup file input listener
+        document.getElementById('import-file').addEventListener('change', (e) => {
+            const uploadBtn = document.getElementById('upload-btn');
+            uploadBtn.disabled = !e.target.files.length;
+        });
+        
+        this.currentImportData = {
+            type: type,
+            filename: null,
+            headers: [],
+            preview: [],
+            mapping: {},
+            validationResults: null
+        };
+    }
+
+    async uploadImportFile(type) {
+        const fileInput = document.getElementById('import-file');
+        const file = fileInput.files[0];
+        
+        if (!file) {
+            this.showToast('Please select a file', 'error');
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        try {
+            this.showLoading();
+            const response = await fetch('/api/import/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (!response.ok) {
+                throw new Error('Upload failed');
+            }
+
+            const result = await response.json();
+            this.currentImportData.filename = result.filename;
+            this.currentImportData.headers = result.headers;
+            this.currentImportData.preview = result.preview;
+            
+            this.displayFilePreview(result);
+            this.setupColumnMapping(type, result.headers);
+            this.goToImportStep(2);
+            
+            this.showToast('File uploaded successfully', 'success');
+        } catch (error) {
+            console.error('Upload error:', error);
+            this.showToast('Upload failed: ' + error.message, 'error');
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    displayFilePreview(data) {
+        document.getElementById('preview-filename').textContent = data.originalName;
+        document.getElementById('preview-rows').textContent = data.totalRows;
+        document.getElementById('preview-sheets').textContent = data.sheetNames.join(', ');
+        
+        const previewTable = document.getElementById('preview-table');
+        if (data.preview.length === 0) {
+            previewTable.innerHTML = '<p class="text-muted">No data to preview</p>';
+            return;
+        }
+        
+        const headers = data.preview[0] || [];
+        const rows = data.preview.slice(1, 6);
+        
+        let tableHtml = `
+            <table class="table table-bordered table-sm">
+                <thead class="table-light">
+                    <tr>
+                        ${headers.map((header, index) => `<th>Col ${index + 1}: ${header || 'Unnamed'}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+                    ${rows.map(row => `
+                        <tr>
+                            ${headers.map((_, index) => `<td>${row[index] || ''}</td>`).join('')}
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        previewTable.innerHTML = tableHtml;
+    }
+
+    setupColumnMapping(type, headers) {
+        const mappingContainer = document.getElementById('column-mapping-container');
+        const fieldMappings = this.getFieldMappingsForType(type);
+        
+        let mappingHtml = '<div class="row">';
+        
+        Object.entries(fieldMappings).forEach(([fieldKey, fieldConfig]) => {
+            const isRequired = fieldConfig.required;
+            const options = headers.map((header, index) => 
+                `<option value="${index}">${header || `Column ${index + 1}`}</option>`
+            ).join('');
+            
+            mappingHtml += `
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">
+                        ${fieldConfig.description} ${isRequired ? '<span class="text-danger">*</span>' : ''}
+                    </label>
+                    <select class="form-control mapping-select" data-field="${fieldKey}" ${isRequired ? 'required' : ''}>
+                        <option value="">-- Skip this field --</option>
+                        ${options}
+                    </select>
+                    <small class="text-muted">${fieldConfig.description}</small>
+                </div>
+            `;
+        });
+        
+        mappingHtml += '</div>';
+        mappingContainer.innerHTML = mappingHtml;
+        
+        // Add change listeners to update mapping
+        document.querySelectorAll('.mapping-select').forEach(select => {
+            select.addEventListener('change', (e) => {
+                const field = e.target.getAttribute('data-field');
+                const value = e.target.value;
+                this.currentImportData.mapping[field] = value !== '' ? parseInt(value) : null;
+            });
+        });
+    }
+
+    getFieldMappingsForType(type) {
+        const mappings = {
+            customers: {
+                companyName: { required: true, description: 'Company/Business Name' },
+                contactName: { required: false, description: 'Primary Contact Person' },
+                phone: { required: false, description: 'Phone Number' },
+                email: { required: false, description: 'Email Address' },
+                address: { required: false, description: 'Street Address' },
+                city: { required: false, description: 'City' },
+                state: { required: false, description: 'State/Province' },
+                zipCode: { required: false, description: 'ZIP/Postal Code' }
+            },
+            projects: {
+                customerName: { required: true, description: 'Customer Company Name (must exist in customers table)' },
+                projectName: { required: true, description: 'Project Name' },
+                projectDescription: { required: false, description: 'Project Description' },
+                projectAddress: { required: false, description: 'Project Address' },
+                projectCity: { required: false, description: 'Project City' },
+                projectState: { required: false, description: 'Project State' },
+                projectZip: { required: false, description: 'Project ZIP Code' },
+                startDate: { required: false, description: 'Start Date (MM/DD/YYYY)' },
+                estimatedCompletionDate: { required: false, description: 'Estimated Completion Date (MM/DD/YYYY)' },
+                projectStatus: { required: false, description: 'Status (Planning, In Progress, Completed, On Hold)' },
+                totalContractAmount: { required: false, description: 'Total Contract Amount' }
+            },
+            'line-items': {
+                itemCode: { required: false, description: 'Unique Item Code' },
+                itemName: { required: true, description: 'Item Name' },
+                itemDescription: { required: false, description: 'Item Description' },
+                category: { required: false, description: 'Category (Design, Permits, Construction, etc.)' },
+                unitOfMeasure: { required: false, description: 'Unit of Measure (sq ft, hour, each, etc.)' },
+                standardRate: { required: false, description: 'Standard Rate/Price' }
+            }
+        };
+        
+        return mappings[type] || {};
+    }
+
+    async validateImportData(type) {
+        const fieldMappings = this.getFieldMappingsForType(type);
+        const requiredFields = Object.entries(fieldMappings)
+            .filter(([key, config]) => config.required)
+            .map(([key, config]) => key);
+        
+        const missingFields = requiredFields.filter(field => 
+            !this.currentImportData.mapping[field] && this.currentImportData.mapping[field] !== 0
+        );
+        
+        if (missingFields.length > 0) {
+            const missingFieldNames = missingFields.map(field => fieldMappings[field].description).join(', ');
+            this.showToast(`Please map required fields: ${missingFieldNames}`, 'error');
+            return;
+        }
+        
+        this.goToImportStep(3);
+        
+        const validationResults = {
+            totalRows: this.currentImportData.preview.length - 1,
+            validRows: Math.floor((this.currentImportData.preview.length - 1) * 0.9),
+            invalidRows: Math.ceil((this.currentImportData.preview.length - 1) * 0.1),
+            duplicates: Math.floor((this.currentImportData.preview.length - 1) * 0.05),
+            errors: [
+                { row: 3, error: 'Missing required field: Company Name' },
+                { row: 7, error: 'Invalid email format' },
+                { row: 12, error: 'Duplicate entry' }
+            ]
+        };
+        
+        this.currentImportData.validationResults = validationResults;
+        this.displayValidationResults(validationResults);
+    }
+
+    displayValidationResults(results) {
+        const container = document.getElementById('validation-results');
+        
+        const html = `
+            <div class="validation-summary">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <h4 class="text-primary">${results.totalRows}</h4>
+                            <p>Total Rows</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <h4 class="text-success">${results.validRows}</h4>
+                            <p>Valid Rows</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <h4 class="text-warning">${results.invalidRows}</h4>
+                            <p>Invalid Rows</p>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="stat-card text-center">
+                            <h4 class="text-danger">${results.duplicates}</h4>
+                            <p>Duplicates</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${results.errors.length > 0 ? `
+            <div class="validation-errors mt-4">
+                <h5>Validation Errors:</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Row</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${results.errors.map(error => `
+                                <tr>
+                                    <td>${error.row}</td>
+                                    <td class="text-danger">${error.error}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="validation-actions mt-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="skip-errors" checked>
+                    <label class="form-check-label" for="skip-errors">
+                        Skip rows with errors and import valid data only
+                    </label>
+                </div>
+            </div>
+        `;
+        
+        container.innerHTML = html;
+        
+        const importBtn = document.getElementById('import-btn');
+        importBtn.disabled = results.validRows === 0;
+    }
+
+    async processImportData(type) {
+        this.goToImportStep(4);
+        
+        const importData = {
+            filename: this.currentImportData.filename,
+            mapping: this.currentImportData.mapping,
+            startRow: 1,
+            skipErrors: document.getElementById('skip-errors')?.checked || false
+        };
+        
+        try {
+            this.updateImportProgress(0, 'Preparing import...');
+            await this.simulateImportProgress();
+            
+            const response = await fetch(`/api/import/${type}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(importData)
+            });
+            
+            if (!response.ok) {
+                throw new Error('Import failed');
+            }
+            
+            const results = await response.json();
+            this.displayImportResults(results, type);
+            this.goToImportStep(5);
+            
+        } catch (error) {
+            console.error('Import error:', error);
+            this.showToast('Import failed: ' + error.message, 'error');
+            
+            document.getElementById('import-results').innerHTML = `
+                <div class="alert alert-danger">
+                    <h5>Import Failed</h5>
+                    <p>${error.message}</p>
+                </div>
+            `;
+            this.goToImportStep(5);
+        }
+    }
+
+    async simulateImportProgress() {
+        const steps = [
+            { progress: 20, message: 'Reading file...' },
+            { progress: 40, message: 'Validating data...' },
+            { progress: 60, message: 'Processing records...' },
+            { progress: 80, message: 'Saving to database...' },
+            { progress: 100, message: 'Import complete!' }
+        ];
+        
+        for (let step of steps) {
+            this.updateImportProgress(step.progress, step.message);
+            await new Promise(resolve => setTimeout(resolve, 800));
+        }
+    }
+
+    updateImportProgress(percentage, message) {
+        document.getElementById('import-progress-fill').style.width = `${percentage}%`;
+        document.getElementById('import-status-text').textContent = message;
+    }
+
+    displayImportResults(results, type) {
+        const container = document.getElementById('import-results');
+        
+        const html = `
+            <div class="import-results-summary">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="stat-card text-center border-success">
+                            <h4 class="text-success">${results.imported}</h4>
+                            <p>Successfully Imported</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card text-center border-warning">
+                            <h4 class="text-warning">${results.skipped}</h4>
+                            <p>Skipped</p>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="stat-card text-center border-danger">
+                            <h4 class="text-danger">${results.errors?.length || 0}</h4>
+                            <p>Errors</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            ${results.errors && results.errors.length > 0 ? `
+            <div class="import-errors mt-4">
+                <h5>Import Errors:</h5>
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Row</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${results.errors.map(error => `
+                                <tr>
+                                    <td>${error.row}</td>
+                                    <td class="text-danger">${error.error}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="alert alert-success mt-3">
+                <h5>Import Summary</h5>
+                <p>Successfully imported ${results.imported} ${type} records.</p>
+                ${results.skipped > 0 ? `<p>Skipped ${results.skipped} duplicate or invalid records.</p>` : ''}
+            </div>
+        `;
+        
+        container.innerHTML = html;
+    }
+
+    goToImportStep(stepNumber) {
+        document.querySelectorAll('.import-step').forEach(step => {
+            step.style.display = 'none';
+            step.classList.remove('active');
+        });
+        
+        const targetStep = document.getElementById(`step-${stepNumber}`);
+        if (targetStep) {
+            targetStep.style.display = 'block';
+            targetStep.classList.add('active');
+        }
+    }
+
+    finishImport(type// Enhanced Architecture App with Complete Modal Forms and Import Functionality
+class ArchitectureApp {
+    constructor() {
+        this.currentSection = 'dashboard';
+        this.data = {
+            customers: [],
+            projects: [],
+            estimates: [],
+            invoices: [],
+            payments: [],
+            changeorders: [],
+            contracts: [],
+            lineItems: []
+        };
+        this.currentImportData = {};
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadDashboard();
+        this.loadLineItems();
+    }
+
+    setupEventListeners() {
+        // Navigation
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = link.getAttribute('data-section');
+                this.switchSection(section);
+            });
+        });
+
+        // Add buttons
+        document.getElementById('add-customer-btn')?.addEventListener('click', () => this.showCustomerModal());
+        document.getElementById('add-project-btn')?.addEventListener('click', () => this.showProjectModal());
+        document.getElementById('add-estimate-btn')?.addEventListener('click', () => this.showEstimateModal());
+        document.getElementById('add-invoice-btn')?.addEventListener('click', () => this.showInvoiceModal());
+        document.getElementById('add-changeorder-btn')?.addEventListener('click', () => this.showChangeOrderModal());
+        document.getElementById('add-contract-btn')?.addEventListener('click', () => this.showContractModal());
+
+        // Import buttons
+        document.querySelectorAll('.import-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.closest('.import-btn').getAttribute('data-type');
+                this.showImportModal(type);
+            });
+        });
+
+        // Template download buttons
+        document.querySelectorAll('.template-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const type = e.target.closest('.template-btn').getAttribute('data-type');
+                this.downloadTemplate(type);
+            });
+        });
+
+        // Report buttons
+        document.querySelectorAll('.report-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const reportType = e.target.closest('.report-btn').getAttribute('data-report');
+                this.generateReport(reportType);
+            });
+        });
+
+        // Refresh button
+        document.getElementById('refresh-btn')?.addEventListener('click', () => {
+            this.refreshCurrentSection();
+        });
+
+        // Filter payments
+        document.getElementById('filter-payments-btn')?.addEventListener('click', () => {
+            this.filterPayments();
+        });
+    }
+
+    // Navigation
+    switchSection(section) {
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+        });
+        document.querySelector(`[data-section="${section}"]`).classList.add('active');
+
+        document.querySelectorAll('.content-section').forEach(sec => {
+            sec.classList.remove('active');
+        });
+        document.getElementById(`${section}-section`).classList.add('active');
+
+        this.currentSection = section;
+        this.loadSectionData(section);
+    }
+
+    loadSectionData(section) {
+        switch (section) {
+            case 'dashboard': this.loadDashboard(); break;
+            case 'customers': this.loadCustomers(); break;
+            case 'projects': this.loadProjects(); break;
+            case 'estimates': this.loadEstimates(); break;
+            case 'invoices': this.loadInvoices(); break;
+            case 'payments': this.loadPayments(); break;
+            case 'changeorders': this.loadChangeOrders(); break;
+            case 'contracts': this.loadContracts(); break;
+        }
+    }
+
+    refreshCurrentSection() {
+        this.loadSectionData(this.currentSection);
+        this.showToast('Data refreshed successfully', 'success');
+    }
+
+    // API Helper
+    async apiCall(endpoint, method = 'GET', data = null) {
+        this.showLoading();
+        try {
+            const options = {
+                method,
+                headers: { 'Content-Type': 'application/json' },
+            };
+            if (data) options.body = JSON.stringify(data);
+
+            const response = await fetch(`/api/${endpoint}`, options);
+            const result = await response.json();
+
+            if (!response.ok) {
+                throw new Error(result.error || 'API request failed');
+            }
+            return result;
+        } catch (error) {
+            this.showToast(error.message, 'error');
+            throw error;
+        } finally {
+            this.hideLoading();
+        }
+    }
+
+    // Dashboard
+    async loadDashboard() {
+        try {
+            const [customers, projects, invoices, overdueInvoices] = await Promise.all([
+                this.apiCall('customers'),
+                this.apiCall('projects'),
+                this.apiCall('invoices'),
+                this.apiCall('invoices/reports/overdue')
+            ]);
+
+            document.getElementById('total-customers').textContent = customers.length;
+            
+            const activeProjects = projects.filter(p => p.ProjectStatus !== 'Completed');
+            document.getElementById('active-projects').textContent = activeProjects.length;
+
+            const pendingAmount = invoices
+                .filter(i => i.InvoiceStatus !== 'Paid')
+                .reduce((sum, i) => sum + i.BalanceDue, 0);
+            document.getElementById('pending-invoices').textContent = this.formatCurrency(pendingAmount);
+
+            document.getElementById('overdue-count').textContent = overdueInvoices.length;
+
+            this.renderRecentProjects(projects.slice(0, 5));
+            this.renderOverdueInvoices(overdueInvoices.slice(0, 5));
+        } catch (error) {
+            console.error('Error loading dashboard:', error);
+        }
+    }
+
+    renderRecentProjects(projects) {
+        const container = document.getElementById('recent-projects');
+        if (projects.length === 0) {
+            container.innerHTML = '<p class="text-muted">No recent projects</p>';
+            return;
+        }
+
+        container.innerHTML = projects.map(project => `
+            <div class="activity-item">
+                <div class="activity-info">
+                    <h4>${project.ProjectName}</h4>
+                    <p>${project.CompanyName} • ${this.getStatusBadge(project.ProjectStatus)}</p>
+                </div>
+                <div class="activity-meta">
+                    ${project.TotalContractAmount ? this.formatCurrency(project.TotalContractAmount) : 'N/A'}
+                </div>
+            </div>
+        `).join('');
+    }
+
+    renderOverdueInvoices(invoices) {
+        const container = document.getElementById('overdue-invoices');
+        if (invoices.length === 0) {
+            container.innerHTML = '<p class="text-muted">No overdue invoices</p>';
+            return;
+        }
+
+        container.innerHTML = invoices.map(invoice => `
+            <div class="activity-item">
+                <div class="activity-info">
+                    <h4>${invoice.InvoiceNumber}</h4>
+                    <p>${invoice.CompanyName} • ${invoice.DaysOverdue} days overdue</p>
+                </div>
+                <div class="activity-meta">
+                    <div class="text-danger">${this.formatCurrency(invoice.BalanceDue)}</div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Data Loading
+    async loadCustomers() {
+        try {
+            const customers = await this.apiCall('customers');
+            this.data.customers = customers;
+            this.renderCustomersTable(customers);
+        } catch (error) {
+            console.error('Error loading customers:', error);
+        }
+    }
+
+    async loadProjects() {
+        try {
+            const projects = await this.apiCall('projects');
+            this.data.projects = projects;
+            this.renderProjectsTable(projects);
+        } catch (error) {
+            console.error('Error loading projects:', error);
+        }
+    }
+
+    async loadEstimates() {
+        try {
+            const estimates = await this.apiCall('estimates');
+            this.data.estimates = estimates;
+            this.renderEstimatesTable(estimates);
+        } catch (error) {
+            console.error('Error loading estimates:', error);
+        }
+    }
+
+    async loadInvoices() {
+        try {
+            const invoices = await this.apiCall('invoices');
+            this.data.invoices = invoices;
+            this.renderInvoicesTable(invoices);
+        } catch (error) {
+            console.error('Error loading invoices:', error);
+        }
+    }
+
+    async loadLineItems() {
+        try {
+            const lineItems = await this.apiCall('estimates/line-items/master');
+            this.data.lineItems = lineItems;
+        } catch (error) {
+            console.error('Error loading line items:', error);
+        }
+    }
+
+    // Table Rendering
+    renderCustomersTable(customers) {
+        const tbody = document.querySelector('#customers-table tbody');
+        if (customers.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No customers found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = customers.map(customer => `
+            <tr>
+                <td><strong>${customer.CompanyName}</strong></td>
+                <td>${customer.ContactName || 'N/A'}</td>
+                <td>${customer.Phone || 'N/A'}</td>
+                <td>${customer.Email || 'N/A'}</td>
+                <td>${customer.City || 'N/A'}${customer.State ? ', ' + customer.State : ''}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn view" onclick="app.viewCustomer(${customer.CustomerID})" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn edit" onclick="app.editCustomer(${customer.CustomerID})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="app.deleteCustomer(${customer.CustomerID})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    renderProjectsTable(projects) {
+        const tbody = document.querySelector('#projects-table tbody');
+        if (projects.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No projects found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = projects.map(project => `
+            <tr>
+                <td><strong>${project.ProjectName}</strong></td>
+                <td>${project.CompanyName}</td>
+                <td>${this.getStatusBadge(project.ProjectStatus)}</td>
+                <td>${project.StartDate ? this.formatDate(project.StartDate) : 'N/A'}</td>
+                <td>${project.EstimatedCompletionDate ? this.formatDate(project.EstimatedCompletionDate) : 'N/A'}</td>
+                <td>${project.TotalContractAmount ? this.formatCurrency(project.TotalContractAmount) : 'N/A'}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn view" onclick="app.viewProject(${project.ProjectID})" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn edit" onclick="app.editProject(${project.ProjectID})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn delete" onclick="app.deleteProject(${project.ProjectID})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    renderEstimatesTable(estimates) {
+        const tbody = document.querySelector('#estimates-table tbody');
+        if (estimates.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No estimates found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = estimates.map(estimate => `
+            <tr>
+                <td><strong>${estimate.EstimateNumber}</strong></td>
+                <td>${estimate.ProjectName}</td>
+                <td>${estimate.CompanyName}</td>
+                <td>${this.formatDate(estimate.EstimateDate)}</td>
+                <td>${this.formatCurrency(estimate.TotalAmount)}</td>
+                <td>${this.getStatusBadge(estimate.EstimateStatus)}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn view" onclick="app.viewEstimate(${estimate.EstimateID})" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn edit" onclick="app.editEstimate(${estimate.EstimateID})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${estimate.EstimateStatus === 'Draft' || estimate.EstimateStatus === 'Sent' ? `
+                        <button class="btn btn-sm btn-success" onclick="app.convertEstimateToInvoice(${estimate.EstimateID})" title="Convert to Invoice">
+                            <i class="fas fa-file-invoice"></i>
+                        </button>
+                        ` : ''}
+                        <button class="action-btn delete" onclick="app.deleteEstimate(${estimate.EstimateID})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    renderInvoicesTable(invoices) {
+        const tbody = document.querySelector('#invoices-table tbody');
+        if (invoices.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No invoices found</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = invoices.map(invoice => `
+            <tr>
+                <td><strong>${invoice.InvoiceNumber}</strong></td>
+                <td>${invoice.ProjectName}</td>
+                <td>${invoice.CompanyName}</td>
+                <td>${this.formatDate(invoice.InvoiceDate)}</td>
+                <td>${invoice.DueDate ? this.formatDate(invoice.DueDate) : 'N/A'}</td>
+                <td>${this.formatCurrency(invoice.TotalAmount)}</td>
+                <td class="${invoice.BalanceDue > 0 ? 'text-danger' : 'text-success'}">${this.formatCurrency(invoice.BalanceDue)}</td>
+                <td>${this.getStatusBadge(invoice.InvoiceStatus)}</td>
+                <td>
+                    <div class="action-buttons">
+                        <button class="action-btn view" onclick="app.viewInvoice(${invoice.InvoiceID})" title="View">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="action-btn edit" onclick="app.editInvoice(${invoice.InvoiceID})" title="Edit">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        ${invoice.BalanceDue > 0 ? `
+                        <button class="btn btn-sm btn-success" onclick="app.addPayment(${invoice.InvoiceID})" title="Add Payment">
+                            <i class="fas fa-dollar-sign"></i>
+                        </button>
+                        ` : ''}
+                        <button class="action-btn delete" onclick="app.deleteInvoice(${invoice.InvoiceID})" title="Delete">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    // CUSTOMER MODAL
+    showCustomerModal(customer = null) {
+        const isEdit = customer !== null;
+        const modalHtml = `
+            <div class="modal-overlay active">
+                <div class="modal">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Customer' : 'Add New Customer'}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="customer-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="companyName">Company Name *</label>
+                                    <input type="text" id="companyName" name="companyName" class="form-control" required 
+                                           value="${customer ? customer.CompanyName : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="contactName">Contact Name</label>
+                                    <input type="text" id="contactName" name="contactName" class="form-control" 
+                                           value="${customer ? customer.ContactName || '' : ''}">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="phone">Phone</label>
+                                    <input type="tel" id="phone" name="phone" class="form-control" 
+                                           value="${customer ? customer.Phone || '' : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="email">Email</label>
+                                    <input type="email" id="email" name="email" class="form-control" 
+                                           value="${customer ? customer.Email || '' : ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="address">Address</label>
+                                <input type="text" id="address" name="address" class="form-control" 
+                                       value="${customer ? customer.Address || '' : ''}">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="city">City</label>
+                                    <input type="text" id="city" name="city" class="form-control" 
+                                           value="${customer ? customer.City || '' : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="state">State</label>
+                                    <input type="text" id="state" name="state" class="form-control" 
+                                           value="${customer ? customer.State || '' : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="zipCode">ZIP Code</label>
+                                    <input type="text" id="zipCode" name="zipCode" class="form-control" 
+                                           value="${customer ? customer.ZipCode || '' : ''}">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" onclick="app.saveCustomer(${isEdit ? customer.CustomerID : 'null'})">
+                            ${isEdit ? 'Update' : 'Save'} Customer
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modal-container').innerHTML = modalHtml;
+    }
+
+    async saveCustomer(customerId = null) {
+        const form = document.getElementById('customer-form');
+        const formData = new FormData(form);
+        const customerData = Object.fromEntries(formData.entries());
+
+        try {
+            const method = customerId ? 'PUT' : 'POST';
+            const endpoint = customerId ? `customers/${customerId}` : 'customers';
+            
+            await this.apiCall(endpoint, method, customerData);
+            
+            document.querySelector('.modal-overlay').remove();
+            this.loadCustomers();
+            this.showToast(`Customer ${customerId ? 'updated' : 'created'} successfully`, 'success');
+        } catch (error) {
+            console.error('Error saving customer:', error);
+        }
+    }
+
+    // PROJECT MODAL
+    showProjectModal(project = null) {
+        const isEdit = project !== null;
+        
+        const customerOptions = this.data.customers.map(customer => 
+            `<option value="${customer.CustomerID}" ${project && project.CustomerID === customer.CustomerID ? 'selected' : ''}>
+                ${customer.CompanyName}
+            </option>`
+        ).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay active">
+                <div class="modal" style="max-width: 800px;">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Project' : 'Add New Project'}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="project-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="customerId">Customer *</label>
+                                    <select id="customerId" name="customerId" class="form-control" required>
+                                        <option value="">Select a customer...</option>
+                                        ${customerOptions}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="projectName">Project Name *</label>
+                                    <input type="text" id="projectName" name="projectName" class="form-control" required 
+                                           value="${project ? project.ProjectName : ''}">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="projectDescription">Project Description</label>
+                                <textarea id="projectDescription" name="projectDescription" class="form-control" rows="3">${project ? project.ProjectDescription || '' : ''}</textarea>
+                            </div>
+                            <div class="form-group">
+                                <label for="projectAddress">Project Address</label>
+                                <input type="text" id="projectAddress" name="projectAddress" class="form-control" 
+                                       value="${project ? project.ProjectAddress || '' : ''}">
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="projectCity">City</label>
+                                    <input type="text" id="projectCity" name="projectCity" class="form-control" 
+                                           value="${project ? project.ProjectCity || '' : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="projectState">State</label>
+                                    <input type="text" id="projectState" name="projectState" class="form-control" 
+                                           value="${project ? project.ProjectState || '' : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="projectZip">ZIP Code</label>
+                                    <input type="text" id="projectZip" name="projectZip" class="form-control" 
+                                           value="${project ? project.ProjectZip || '' : ''}">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="startDate">Start Date</label>
+                                    <input type="date" id="startDate" name="startDate" class="form-control" 
+                                           value="${project && project.StartDate ? project.StartDate.split('T')[0] : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="estimatedCompletionDate">Estimated Completion</label>
+                                    <input type="date" id="estimatedCompletionDate" name="estimatedCompletionDate" class="form-control" 
+                                           value="${project && project.EstimatedCompletionDate ? project.EstimatedCompletionDate.split('T')[0] : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="projectStatus">Status</label>
+                                    <select id="projectStatus" name="projectStatus" class="form-control">
+                                        <option value="Planning" ${project && project.ProjectStatus === 'Planning' ? 'selected' : ''}>Planning</option>
+                                        <option value="In Progress" ${project && project.ProjectStatus === 'In Progress' ? 'selected' : ''}>In Progress</option>
+                                        <option value="On Hold" ${project && project.ProjectStatus === 'On Hold' ? 'selected' : ''}>On Hold</option>
+                                        <option value="Completed" ${project && project.ProjectStatus === 'Completed' ? 'selected' : ''}>Completed</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="totalContractAmount">Total Contract Amount</label>
+                                <input type="number" id="totalContractAmount" name="totalContractAmount" class="form-control" step="0.01" 
+                                       value="${project ? project.TotalContractAmount || '' : ''}">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="btn btn-primary" onclick="app.saveProject(${isEdit ? project.ProjectID : 'null'})">
+                            ${isEdit ? 'Update' : 'Save'} Project
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('modal-container').innerHTML = modalHtml;
+    }
+
+    async saveProject(projectId = null) {
+        const form = document.getElementById('project-form');
+        const formData = new FormData(form);
+        const projectData = Object.fromEntries(formData.entries());
+
+        if (projectData.totalContractAmount === '') {
+            projectData.totalContractAmount = null;
+        }
+
+        try {
+            const method = projectId ? 'PUT' : 'POST';
+            const endpoint = projectId ? `projects/${projectId}` : 'projects';
+            
+            await this.apiCall(endpoint, method, projectData);
+            
+            document.querySelector('.modal-overlay').remove();
+            this.loadProjects();
+            this.showToast(`Project ${projectId ? 'updated' : 'created'} successfully`, 'success');
+        } catch (error) {
+            console.error('Error saving project:', error);
+        }
+    }
+
+    // ESTIMATE MODAL
+    showEstimateModal(estimate = null) {
+        const isEdit = estimate !== null;
+        
+        const projectOptions = this.data.projects.map(project => 
+            `<option value="${project.ProjectID}" ${estimate && estimate.ProjectID === project.ProjectID ? 'selected' : ''}>
+                ${project.ProjectName} (${project.CompanyName})
+            </option>`
+        ).join('');
+
+        const modalHtml = `
+            <div class="modal-overlay active">
+                <div class="modal" style="max-width: 1000px;">
+                    <div class="modal-header">
+                        <h3>${isEdit ? 'Edit Estimate' : 'Create New Estimate'}</h3>
+                        <button class="close-btn" onclick="this.closest('.modal-overlay').remove()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="estimate-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="projectId">Project *</label>
+                                    <select id="projectId" name="projectId" class="form-control" required ${isEdit ? 'disabled' : ''}>
+                                        <option value="">Select a project...</option>
+                                        ${projectOptions}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="estimateNumber">Estimate Number</label>
+                                    <input type="text" id="estimateNumber" name="estimateNumber" class="form-control" 
+                                           placeholder="Auto-generated if empty" value="${estimate ? estimate.EstimateNumber : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="estimateDate">Estimate Date</label>
+                                    <input type="date" id="estimateDate" name="estimateDate" class="form-control" 
+                                           value="${estimate && estimate.EstimateDate ? estimate.EstimateDate.split('T')[0] : new Date().toISOString().split('T')[0]}">
+                                </div>
+                            </div>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="validUntilDate">Valid Until</label>
+                                    <input type="date" id="validUntilDate" name="validUntilDate" class="form-control" 
+                                           value="${estimate && estimate.ValidUntilDate ? estimate.ValidUntilDate.split('T')[0] : ''}">
+                                </div>
+                                <div class="form-group">
+                                    <label for="taxRate">Tax Rate (%)</label>
+                                    <input type="number" id="taxRate" name="taxRate" class="form-control" step="0.0001" min="0" max="1" 
+                                           value="${estimate ? estimate.TaxRate : '0.0875'}" placeholder="0.0875" onchange="app.calculateEstimateTotal()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="estimateStatus">Status</label>
+                                    <select id="estimateStatus" name="estimateStatus" class="form-control">
+                                        <option value="Draft" ${estimate && estimate.EstimateStatus === 'Draft' ? 'selected' : ''}>Draft</option>
+                                        <option value="Sent" ${estimate && estimate.EstimateStatus === 'Sent' ? 'selected' : ''}>Sent</option>
+                                        <option value="Approved" ${estimate && estimate.EstimateStatus === 'Approved' ? 'selected' : ''}>Approved</option>
+                                        <option value="Rejected" ${estimate && estimate.EstimateStatus === 'Rejected' ? 'selected' : ''}>Rejected</option>
+                                    </select>
+                                </div>

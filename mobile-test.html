@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Detection Test - Omega Builders</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+        }
+        .info-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 10px 0;
+            backdrop-filter: blur(10px);
+        }
+        .status {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+        .mobile { color: #4CAF50; }
+        .desktop { color: #2196F3; }
+        .tablet { color: #FF9800; }
+    </style>
+</head>
+<body>
+    <h1>📱 Mobile Detection Test</h1>
+    <div class="info-card">
+        <h2>Device Information</h2>
+        <div id="deviceInfo"></div>
+    </div>
+    
+    <div class="info-card">
+        <h2>Screen Information</h2>
+        <div id="screenInfo"></div>
+    </div>
+    
+    <div class="info-card">
+        <h2>User Agent</h2>
+        <div id="userAgent"></div>
+    </div>
+
+    <script>
+        function detectMobile() {
+            return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                   window.innerWidth <= 768;
+        }
+
+        function detectTablet() {
+            return /iPad|Android/i.test(navigator.userAgent) && window.innerWidth >= 768 && window.innerWidth <= 1024;
+        }
+
+        function getScreenSize() {
+            const width = window.innerWidth;
+            if (width <= 480) return 'xs (Extra Small - Phone)';
+            if (width <= 768) return 'sm (Small - Phone/Small Tablet)';
+            if (width <= 992) return 'md (Medium - Tablet)';
+            if (width <= 1200) return 'lg (Large - Desktop)';
+            return 'xl (Extra Large - Large Desktop)';
+        }
+
+        function updateInfo() {
+            const isMobile = detectMobile();
+            const isTablet = detectTablet();
+            const screenSize = getScreenSize();
+            
+            let deviceType = 'Desktop';
+            let deviceClass = 'desktop';
+            
+            if (isMobile) {
+                deviceType = isTablet ? 'Tablet' : 'Mobile';
+                deviceClass = isTablet ? 'tablet' : 'mobile';
+            }
+            
+            document.getElementById('deviceInfo').innerHTML = `
+                <div class="status ${deviceClass}">Device Type: ${deviceType}</div>
+                <div>Mobile Detected: ${isMobile ? '✅ Yes' : '❌ No'}</div>
+                <div>Tablet Detected: ${isTablet ? '✅ Yes' : '❌ No'}</div>
+                <div>Touch Support: ${('ontouchstart' in window) ? '✅ Yes' : '❌ No'}</div>
+            `;
+            
+            document.getElementById('screenInfo').innerHTML = `
+                <div>Screen Size Category: <strong>${screenSize}</strong></div>
+                <div>Window Width: ${window.innerWidth}px</div>
+                <div>Window Height: ${window.innerHeight}px</div>
+                <div>Screen Width: ${screen.width}px</div>
+                <div>Screen Height: ${screen.height}px</div>
+                <div>Device Pixel Ratio: ${window.devicePixelRatio}</div>
+                <div>Orientation: ${window.innerHeight > window.innerWidth ? 'Portrait' : 'Landscape'}</div>
+            `;
+            
+            document.getElementById('userAgent').innerHTML = `
+                <small>${navigator.userAgent}</small>
+            `;
+        }
+        
+        // Update info on load and resize
+        updateInfo();
+        window.addEventListener('resize', updateInfo);
+        window.addEventListener('orientationchange', () => {
+            setTimeout(updateInfo, 100);
+        });
+    </script>
+</body>
+</html>

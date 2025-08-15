@@ -1,0 +1,1172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no, viewport-fit=cover">
+    <title>Omega Builders - Project Dashboard</title>
+    <meta name="description" content="Architecture project management system for estimates, contracts, and project tracking">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Omega Builders">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#667eea">
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/mobile.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="auth-loading" style="
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 9999;
+        color: white;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    ">
+        <div style="text-align: center;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">
+                <i class="fas fa-drafting-compass fa-spin"></i>
+            </div>
+            <h2 style="margin: 0;">Synergi iManage</h2>
+            <p style="margin: 0.5rem 0;">Loading...</p>
+        </div>
+    </div>
+
+    <div id="main-app" style="display: none;">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <div class="app-container">
+            <!-- Header -->
+            <header class="header">
+                <div class="header-content">
+                    <button class="btn-menu" id="menu-toggle"><i class="fas fa-bars"></i></button>
+                    <h1><i class="fas fa-drafting-compass"></i> Synergi iManage</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-refresh" onclick="app.refreshData()" title="Refresh all data">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="btn btn-secondary nav-link" data-section="settings" onclick="app.switchSection('settings')">
+                            <i class="fas fa-cog"></i> Settings
+                        </button>
+                        <div class="user-info" id="user-info">
+                            <i class="fas fa-user-circle"></i>
+                            <span id="user-name">Loading...</span>
+                            <div class="user-dropdown">
+                                <button class="btn btn-sm" onclick="app.changePassword()" title="Change Password">
+                                    <i class="fas fa-key"></i> Change Password
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="app.logout()" title="Logout">
+                                    <i class="fas fa-sign-out-alt"></i> Logout
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Main Content -->
+            <div class="main-content">
+                <!-- Sidebar Navigation -->
+                <nav class="sidebar">
+                    <ul class="nav-menu">
+                        <li class="nav-item">
+                            <a href="#dashboard" class="nav-link active" data-section="dashboard">
+                                <i class="fas fa-chart-dashboard"></i>
+                                <span>Dashboard</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#customers" class="nav-link" data-section="customers">
+                                <i class="fas fa-users"></i>
+                                <span>Customers</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#projects" class="nav-link" data-section="projects">
+                                <i class="fas fa-building"></i>
+                                <span>Projects</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#estimates" class="nav-link" data-section="estimates">
+                                <i class="fas fa-calculator"></i>
+                                <span>Estimates</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#payterms" class="nav-link" data-section="payterms">
+                                <i class="fas fa-money-check-alt"></i>
+                                <span>Pay Terms</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#invoices" class="nav-link" data-section="invoices">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                <span>Invoices</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#payments" class="nav-link" data-section="payments">
+                                <i class="fas fa-credit-card"></i>
+                                <span>Payments</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#contracts" class="nav-link" data-section="contracts">
+                                <i class="fas fa-file-contract"></i>
+                                <span>Contracts</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#import" class="nav-link" data-section="import">
+                                <i class="fas fa-file-excel"></i>
+                                <span>Import Data</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#reports" class="nav-link" data-section="reports">
+                                <i class="fas fa-chart-bar"></i>
+                                <span>Reports</span>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+
+                <!-- Content Area -->
+                <main class="content">
+                    <!-- Dashboard Section -->
+                    <section id="dashboard-section" class="content-section active">
+                        <div class="section-header">
+                            <h2>Dashboard</h2>
+                            <p>Overview of your architecture projects and business metrics</p>
+                            <div class="dashboard-actions" style="display: flex; gap: 8px; margin-top: 1rem;">
+                                <button class="btn btn-secondary btn-sm" onclick="app.addNewCustomerFromDashboard()">
+                                    <i class="fas fa-plus"></i> Add New Customer
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="search-section">
+                            <div class="search-bar">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="dashboard-search" placeholder="Search projects..." class="search-input">
+                                <button type="button" id="dashboard-search-clear" class="search-clear" title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="dashboard-project-groups" class="dashboard-grid"></div>
+                    </section>
+                    <!-- Projects Section -->
+                    <section id="projects-section" class="content-section">
+                        <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h2>Projects</h2>
+                                <div class="table-stats">
+                                    <span id="project-count">0 projects</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="search-section">
+                            <div class="search-bar" style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="project-search" placeholder="Search projects by name, customer, or description..." class="search-input">
+                                <button type="button" id="project-search-clear" class="search-clear" title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <label style="margin-left: 10px; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="show-inactive-projects">
+                                    <span style="font-size: 14px;">Show InActive Projects</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="content-layout">
+                            <div class="table-section">
+                                <div class="table-container">
+                                    <table id="projects-table" class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Project Name</th>
+                                                <th>Customer</th>
+                                                <th>Status</th>
+                                                <th>Start Date</th>
+                                                <th>Estimated Completion</th>
+                                                <th>Date Added</th>
+                                                <th>Contract Amount</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="projects-table-body"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Customers Section - NEW IMPROVED LAYOUT -->
+                    <section id="customers-section" class="content-section">
+                        <!-- Page Header -->
+                        <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+                            <div>
+                                <h2>Customers</h2>
+                                <div class="table-stats">
+                                    <span id="customer-count">0 customers</span>
+                                </div>
+                            </div>
+                            <div class="header-actions" style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary" onclick="app.showCustomerModal()">
+                                    <i class="fas fa-plus"></i> Add Customer
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Search Bar -->
+                        <div class="search-section">
+                            <div class="search-bar" style="display: flex; align-items: center; gap: 10px;">
+                                <i class="fas fa-search search-icon"></i>
+                                <input type="text" id="customer-search" placeholder="Search customers by name, contact, phone, or email..." class="search-input">
+                                <button type="button" id="customer-search-clear" class="search-clear" title="Clear search">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                                <label style="margin-left: 10px; display: flex; align-items: center; gap: 5px;">
+                                    <input type="checkbox" id="show-inactive-customers">
+                                    <span style="font-size: 14px;">Show InActive Customers</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Main Content Layout -->
+                        <div class="content-layout">
+                            <!-- Table Section -->
+                            <div class="table-section">
+                                <div class="table-container">
+                                    <table id="customers-table" class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Customer Name</th>
+                                                <th>Contact</th>
+                                                <th>Phone</th>
+                                                <th>Email</th>
+                                                <th>Date Added</th>
+                                                <th>Status</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="customers-table-body">
+                                            <tr>
+                                                <td colspan="7" class="loading">Loading customers...</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                </section>
+
+                <!-- Estimates Section -->
+                <section id="estimates-section" class="content-section">
+                    <div class="section-header" style="display: flex; align-items: center; justify-content: space-between;">
+                        <div>
+                            <h2>Estimates</h2>
+                            <div class="table-stats">
+                                <span id="estimate-count">0 estimates</span>
+                            </div>
+                        </div>
+                        <div class="header-actions" style="display: flex; gap: 10px;">
+                            <!-- Estimates are created from within projects -->
+                        </div>
+                    </div>
+                    <div class="content-layout">
+                        <div class="table-section">
+                            <div class="table-container">
+                                <table id="estimates-table" class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>Estimate #</th>
+                                            <th>Project</th>
+                                            <th>Customer</th>
+                                            <th>Date</th>
+                                            <th>Total Amount</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="estimates-table-body">
+                                        <tr>
+                                            <td colspan="7" class="loading">Loading estimates...</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Pay Terms Section -->
+                <section id="payterms-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Pay Terms</h2>
+                        <!-- Pay terms are created from within estimates -->
+                    </div>
+
+                    <div class="table-container">
+                        <table id="payterms-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Project</th>
+                                    <th>Estimate</th>
+                                    <th>Pay Term</th>
+                                    <th>Type</th>
+                                    <th>Amount</th>
+                                    <th>Due Date</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payterms-table-body">
+                                <tr>
+                                    <td colspan="8" class="loading">Loading pay terms...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Invoices Section -->
+                <section id="invoices-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Invoices</h2>
+                        <!-- Invoices are created from estimates -->
+                    </div>
+
+                    <div class="table-container">
+                        <table id="invoices-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Invoice #</th>
+                                    <th>Project</th>
+                                    <th>Customer</th>
+                                    <th>Date</th>
+                                    <th>Due Date</th>
+                                    <th>Total Amount</th>
+                                    <th>Balance Due</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="invoices-table-body">
+                                <tr>
+                                    <td colspan="9" class="loading">Loading invoices...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Payments Section -->
+                <section id="payments-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Payments</h2>
+                        <div class="section-filters">
+                            <input type="date" id="payment-start-date" class="form-control">
+                            <input type="date" id="payment-end-date" class="form-control">
+                            <button id="filter-payments-btn" class="btn btn-secondary">Filter</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table id="payments-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Payment Date</th>
+                                    <th>Invoice #</th>
+                                    <th>Customer</th>
+                                    <th>Project</th>
+                                    <th>Amount</th>
+                                    <th>Method</th>
+                                    <th>Reference</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payments-table-body">
+                                <tr>
+                                    <td colspan="8" class="loading">Loading payments...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Contracts Section -->
+                <section id="contracts-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Contracts</h2>
+                        <!-- Contracts are created from projects -->
+                    </div>
+
+                    <div class="table-container">
+                        <table id="contracts-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Contract #</th>
+                                    <th>Project</th>
+                                    <th>Customer</th>
+                                    <th>Status</th>
+                                    <th>Type</th>
+                                    <th>Signed Date</th>
+                                    <th>Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contracts-table-body">
+                                <tr>
+                                    <td colspan="8" class="loading">Loading contracts...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Settings Section -->
+                <section id="settings-section" class="content-section">
+                    <div class="section-header">
+                        <h2><i class="fas fa-cog"></i> Settings</h2>
+                        <p>Manage company information and application settings</p>
+                    </div>
+
+                    <div class="settings-container">
+                        <!-- Company Information Card -->
+                        <div class="settings-card">
+                            <h3><i class="fas fa-building"></i> Company Information</h3>
+                            <form id="company-settings-form" class="settings-form">
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="company-name">Company Name</label>
+                                        <input type="text" id="company-name" name="companyName" class="form-control" placeholder="Your Company Name">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="company-email">Email Address</label>
+                                        <input type="email" id="company-email" name="companyEmail" class="form-control" placeholder="contact@company.com">
+                                    </div>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="company-phone">Phone Number</label>
+                                        <input type="tel" id="company-phone" name="companyPhone" class="form-control" placeholder="(555) 123-4567">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="company-website">Website</label>
+                                        <input type="url" id="company-website" name="companyWebsite" class="form-control" placeholder="https://www.company.com">
+                                    </div>
+                                </div>
+                                <div class="form-group">
+                                    <label for="company-address">Address</label>
+                                    <textarea id="company-address" name="companyAddress" class="form-control" rows="3" placeholder="123 Main Street, City, State 12345"></textarea>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Business Settings Card -->
+                        <div class="settings-card">
+                            <h3><i class="fas fa-dollar-sign"></i> Business Settings</h3>
+                            <form id="business-settings-form" class="settings-form">
+                                <div class="settings-group">
+                                    <h4>Financial Settings</h4>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="tax-rate">Tax Rate (%)</label>
+                                            <input type="number" id="tax-rate" name="taxRate" class="form-control" step="0.0001" min="0" max="1" placeholder="0.0875">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="payment-terms">Default Payment Terms (Days)</label>
+                                            <input type="number" id="payment-terms" name="paymentTerms" class="form-control" min="1" max="365" placeholder="30">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="hourly-rate">Hourly Rate ($)</label>
+                                            <input type="number" id="hourly-rate" name="hourlyRate" class="form-control" step="0.01" min="0" max="10000" placeholder="75.00">
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="currency-symbol">Currency Symbol</label>
+                                            <input type="text" id="currency-symbol" name="currencySymbol" class="form-control" maxlength="5" placeholder="$">
+                                        </div>
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group">
+                                            <label for="date-format">Date Format</label>
+                                            <select id="date-format" name="dateFormat" class="form-control">
+                                                <option value="MM/dd/yyyy">MM/dd/yyyy</option>
+                                                <option value="dd/MM/yyyy">dd/MM/yyyy</option>
+                                                <option value="yyyy-MM-dd">yyyy-MM-dd</option>
+                                            </select>
+                                        </div>
+                                        <div class="form-group">
+                                            <!-- Empty group for layout balance -->
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-group">
+                                    <h4>Document Templates</h4>
+                                    <div class="form-group">
+                                        <label for="invoice-footer">Invoice Footer Text</label>
+                                        <textarea id="invoice-footer" name="invoiceFooter" class="form-control" rows="2" placeholder="Thank you for your business!"></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="contract-footer">Contract Footer Text</label>
+                                        <textarea id="contract-footer" name="contractFooter" class="form-control" rows="2" placeholder="This contract is legally binding."></textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="default-exclusions">Default Exclusions Text</label>
+                                        <textarea id="default-exclusions" name="defaultExclusions" class="form-control" rows="4" placeholder="Enter your standard exclusions text that will appear on estimates..."></textarea>
+                                        <small class="form-text text-muted">This text will be automatically added to new estimates. You can still customize exclusions for individual estimates.</small>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="signature-image">Digital Signature Image</label>
+                                        <div class="signature-upload-container">
+                                            <input type="file" id="signature-image" name="signatureImage" class="form-control" accept="image/*" onchange="app.handleSignatureUpload(event)">
+                                            <small class="form-text text-muted">
+                                                Upload a PNG or JPG image of your signature (max 2MB). For best results:
+                                                <br>• Use a transparent background PNG file, OR
+                                                <br>• Use a white/light background that matches documents
+                                                <br>• Dark ink signatures work best (the image will be slightly enhanced for better contrast)
+                                            </small>
+                                            <div id="signature-preview" class="signature-preview" style="display: none;">
+                                                <img id="signature-preview-img" src="" alt="Signature Preview" style="max-width: 300px; max-height: 120px; border: 1px solid #ddd; margin-top: 10px; padding: 5px;">
+                                                <button type="button" class="btn btn-sm btn-danger" onclick="app.removeSignature()" style="margin-left: 10px; margin-top: 10px;">
+                                                    <i class="fas fa-trash"></i> Remove
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- System Preferences Card -->
+                        <div class="settings-card">
+                            <h3><i class="fas fa-sliders-h"></i> System Preferences</h3>
+                            <form id="system-settings-form" class="settings-form">
+                                <div class="settings-group">
+                                    <h4>Notifications & Features</h4>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="email-notifications" name="emailNotifications" class="form-check-input">
+                                        <label for="email-notifications" class="form-check-label">Enable email notifications</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="auto-backup" name="autoBackup" class="form-check-input">
+                                        <label for="auto-backup" class="form-check-label">Enable automatic backups</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="show-logo" name="showLogo" class="form-check-input">
+                                        <label for="show-logo" class="form-check-label">Show company logo on documents</label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input type="checkbox" id="require-project-approval" name="requireProjectApproval" class="form-check-input">
+                                        <label for="require-project-approval" class="form-check-label">Require approval before project completion</label>
+                                    </div>
+                                </div>
+
+                                <div class="settings-group">
+                                    <h4>External Access</h4>
+                                    <div class="form-group">
+                                        <label for="base-url">Base URL for External Access</label>
+                                        <input type="url" id="base-url" name="baseUrl" class="form-control" placeholder="https://yourdomain.com:3000 or http://192.168.1.100:3000">
+                                        <small class="form-text text-muted">
+                                            Set this to your domain name or IP address so contract signing links work for customers on external devices. 
+                                            <br>Example: <code>https://yourdomain.com:3000</code> or <code>http://192.168.1.100:3000</code>
+                                            <br>Leave empty to use the default localhost address.
+                                        </small>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
+                        <!-- Data Management Card -->
+                        <div class="settings-card">
+                            <h3><i class="fas fa-database"></i> Data Management</h3>
+                            <div class="settings-actions">
+                                <div class="action-group">
+                                    <h4>Backup & Export</h4>
+                                    <p>Manage your data and system settings</p>
+                                    <button class="btn btn-secondary" onclick="app.exportSettings()">
+                                        <i class="fas fa-download"></i> Export Settings
+                                    </button>
+                                    <button class="btn btn-secondary" onclick="app.runDatabaseBackup()">
+                                        <i class="fas fa-database"></i> Run Backup
+                                    </button>
+                                    <button class="btn btn-warning" onclick="app.clearCache()">
+                                        <i class="fas fa-trash"></i> Clear Cache
+                                    </button>
+                                </div>
+                                
+                                <div class="action-group">
+                                    <h4>System Information</h4>
+                                    <div class="system-info">
+                                        <div class="info-item" id="app-version">
+                                            <span class="label">App Version:</span>
+                                            <span class="value">1.0.0</span>
+                                        </div>
+                                        <div class="info-item" id="last-backup">
+                                            <span class="label">Last Backup:</span>
+                                            <span class="value">Never</span>
+                                        </div>
+                                        <div class="info-item" id="current-user">
+                                            <span class="label">Current User:</span>
+                                            <span class="value">Administrator</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Save Settings Button -->
+                        <div class="settings-actions-footer">
+                            <button class="btn btn-primary btn-lg" onclick="app.saveSettings()">
+                                <i class="fas fa-save"></i> Save All Settings
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.resetSettings()">
+                                <i class="fas fa-undo"></i> Reset to Defaults
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Line Items Section -->
+                <section id="lineitems-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Line Items</h2>
+                    </div>
+                    <div class="table-container">
+                        <table id="lineitems-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Description</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Amount</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="lineitem-table-body">
+                                <tr>
+                                    <td colspan="5" class="loading">Loading line items...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- Import Section -->
+                <section id="import-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Import Data</h2>
+                        <p>Import customers, projects, and line items from Excel files</p>
+                    </div>
+
+                    <div class="import-grid">
+                        <div class="import-card">
+                            <h3><i class="fas fa-users"></i> Import Customers</h3>
+                            <p>Upload an Excel file with customer information</p>
+                            <div class="import-buttons">
+                                <button class="btn btn-primary import-btn" data-type="customers">
+                                    <i class="fas fa-upload"></i> Import Customers
+                                </button>
+                                <button class="btn btn-secondary template-btn" data-type="customers">
+                                    <i class="fas fa-download"></i> Download Template
+                                </button>
+                            </div>
+                            <div class="template-info">
+                                <small><strong>Required fields:</strong> Company Name</small><br>
+                                <small><strong>Optional fields:</strong> Contact Name, Phone, Email, Address, City, State, ZIP</small>
+                            </div>
+                        </div>
+
+                        <div class="import-card">
+                            <h3><i class="fas fa-building"></i> Import Projects</h3>
+                            <p>Upload an Excel file with project information</p>
+                            <div class="import-buttons">
+                                <button class="btn btn-primary import-btn" data-type="projects">
+                                    <i class="fas fa-upload"></i> Import Projects
+                                </button>
+                                <button class="btn btn-secondary template-btn" data-type="projects">
+                                    <i class="fas fa-download"></i> Download Template
+                                </button>
+                            </div>
+                            <div class="template-info">
+                                <small><strong>Required fields:</strong> Customer Name, Project Name</small><br>
+                                <small><strong>Optional fields:</strong> Description, Address, City, State, ZIP, Dates, Status, Amount</small>
+                            </div>
+                        </div>
+
+                        <div class="import-card">
+                            <h3><i class="fas fa-list"></i> Import Line Items</h3>
+                            <p>Upload an Excel file with line item information</p>
+                            <div class="import-buttons">
+                                <button class="btn btn-primary import-btn" data-type="line-items">
+                                    <i class="fas fa-upload"></i> Import Line Items
+                                </button>
+                                <button class="btn btn-secondary template-btn" data-type="line-items">
+                                    <i class="fas fa-download"></i> Download Template
+                                </button>
+                            </div>
+                            <div class="template-info">
+                                <small><strong>Required fields:</strong> Item Name</small><br>
+                                <small><strong>Optional fields:</strong> Item Code, Description, Category, Unit, Standard Rate</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Import Modal -->
+                    <div id="import-modal" class="modal" style="display: none;">
+                        <div class="modal-content" style="max-width: 800px;">
+                            <div class="modal-header">
+                                <h3 id="import-modal-title">Import Data</h3>
+                                <span class="modal-close">&times;</span>
+                            </div>
+                            <div class="modal-body">
+                                <!-- Step 1: File Upload -->
+                                <div id="import-step-1" class="import-step">
+                                    <h4>Step 1: Upload File</h4>
+                                    <div class="file-upload-area" id="file-upload-area">
+                                        <div class="file-upload-content">
+                                            <i class="fas fa-cloud-upload-alt fa-3x"></i>
+                                            <p>Drag and drop your Excel file here, or click to browse</p>
+                                            <input type="file" id="import-file-input" accept=".xlsx,.xls,.csv" style="display: none;">
+                                            <button class="btn btn-primary" onclick="document.getElementById('import-file-input').click()">
+                                                Browse Files
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div id="file-info" style="display: none;">
+                                        <h5>File Information</h5>
+                                        <div id="file-details"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 2: Column Mapping -->
+                                <div id="import-step-2" class="import-step" style="display: none;">
+                                    <h4>Step 2: Map Columns</h4>
+                                    <p>Match your Excel columns to the database fields:</p>
+                                    <div id="column-mapping"></div>
+                                    <div class="import-preview" id="import-preview" style="display: none;">
+                                        <h5>Data Preview (First 5 rows)</h5>
+                                        <div id="preview-table"></div>
+                                    </div>
+                                </div>
+
+                                <!-- Step 3: Import Results -->
+                                <div id="import-step-3" class="import-step" style="display: none;">
+                                    <h4>Import Results</h4>
+                                    <div id="import-results"></div>
+                                </div>
+                            </div>
+                            <div class="modal-footer">
+                                <button class="btn btn-secondary" id="import-prev-btn" style="display: none;" onclick="app.previousImportStep()">Previous</button>
+                                <button class="btn btn-primary" id="import-next-btn" onclick="app.nextImportStep()">Next</button>
+                                <button class="btn btn-success" id="import-execute-btn" style="display: none;" onclick="app.executeImport()">Import Data</button>
+                                <button class="btn btn-secondary" onclick="app.closeImportModal()">Close</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress indicator -->
+                    <div id="import-progress" class="import-progress" style="display: none;">
+                        <h4>Import Progress</h4>
+                        <div class="progress-bar">
+                            <div class="progress-fill"></div>
+                        </div>
+                        <div id="import-status" class="import-status"></div>
+                    </div>
+                </section>
+
+                <!-- Reports Section -->
+                <section id="reports-section" class="content-section">
+                    <div class="section-header">
+                        <h2>Reports</h2>
+                        <p>Business intelligence and analytics</p>
+                    </div>
+
+                    <div class="reports-grid">
+                        <div class="report-card">
+                            <h3><i class="fas fa-clock"></i> Aging Report</h3>
+                            <p>View outstanding invoices by age</p>
+                            <button class="btn btn-primary report-btn" data-report="aging">
+                                Generate Report
+                            </button>
+                        </div>
+
+                        <div class="report-card">
+                            <h3><i class="fas fa-chart-line"></i> Monthly Trends</h3>
+                            <p>Invoice and payment trends by month</p>
+                            <button class="btn btn-primary report-btn" data-report="trends">
+                                Generate Report
+                            </button>
+                        </div>
+
+                        <div class="report-card">
+                            <h3><i class="fas fa-trophy"></i> Top Customers</h3>
+                            <p>Best customers by payment volume</p>
+                            <button class="btn btn-primary report-btn" data-report="customers">
+                                Generate Report
+                            </button>
+                        </div>
+
+                        <div class="report-card">
+                            <h3><i class="fas fa-exclamation-triangle"></i> Overdue Items</h3>
+                            <p>All overdue invoices and items</p>
+                            <button class="btn btn-primary report-btn" data-report="overdue">
+                                Generate Report
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="report-results" class="report-results" style="display: none;">
+                        <h4 id="report-title">Report Results</h4>
+                        <div id="report-content"></div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- Modals will be dynamically inserted here -->
+    <div id="modal-container"></div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display: none;">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Loading...</p>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Google Places API (optional - for enhanced address autocomplete) -->
+    <script>
+        // Check if Google Places API is available, otherwise use fallback
+        window.googlePlacesAvailable = false;
+        
+        function initGooglePlaces() {
+            window.googlePlacesAvailable = true;
+            if (window.app) {
+                window.app.initializeAddressAutocomplete();
+            }
+        }
+        
+        // Try to load Google Places API - replace YOUR_API_KEY with actual key
+        // For now, we'll use a free alternative
+        function loadGooglePlacesAPI() {
+            const script = document.createElement('script');
+            script.src = 'https://maps.googleapis.com/maps/api/js?key=YOUR_API_KEY&libraries=places&callback=initGooglePlaces';
+            script.onerror = function() {
+                console.log('Google Places API not available, using fallback geocoding service');
+                window.googlePlacesAvailable = false;
+            };
+            // Uncomment the next line when you have a Google API key
+            // document.head.appendChild(script);
+        }
+    </script>
+    <script src="js/app.js"></script>
+    
+    <!-- Change Password Modal -->
+    <div id="password-modal" style="display: none;">
+        <div class="password-modal-content">
+            <div class="password-modal-header">
+                <h3>Change Password</h3>
+                <button class="password-modal-close" onclick="app.closePasswordModal()">&times;</button>
+            </div>
+            <div class="password-modal-body">
+                <form id="change-password-form">
+                    <div class="password-form-group">
+                        <label for="current-password">Current Password</label>
+                        <input type="password" id="current-password" name="currentPassword" required>
+                    </div>
+                    <div class="password-form-group">
+                        <label for="new-password">New Password</label>
+                        <input type="password" id="new-password" name="newPassword" required minlength="6">
+                    </div>
+                    <div class="password-form-group">
+                        <label for="confirm-password">Confirm New Password</label>
+                        <input type="password" id="confirm-password" name="confirmPassword" required minlength="6">
+                    </div>
+                </form>
+            </div>
+            <div class="password-modal-footer">
+                <button class="btn btn-primary" onclick="app.submitPasswordChange()">Change Password</button>
+                <button class="btn btn-secondary" onclick="app.closePasswordModal()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Authentication check and initialization
+        class AuthManager {
+            constructor() {
+                this.checkAuthentication();
+            }
+            
+            async checkAuthentication() {
+                try {
+                    const response = await fetch('/api/auth/me', {
+                        credentials: 'include'
+                    });
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        this.initializeApp(data.user, data.dbConnected);
+                    } else {
+                        this.redirectToLogin();
+                    }
+                } catch (error) {
+                    console.error('Authentication check failed:', error);
+                    this.redirectToLogin();
+                }
+            }
+            
+            initializeApp(user, dbConnected) {
+                // Hide loading screen
+                document.getElementById('auth-loading').style.display = 'none';
+                document.getElementById('main-app').style.display = 'block';
+                
+                // Update user info in header
+                document.getElementById('user-name').textContent = user.firstName && user.lastName 
+                    ? `${user.firstName} ${user.lastName}`
+                    : user.username;
+                
+                // Store user info globally
+                window.currentUser = user;
+                window.dbConnected = dbConnected;
+                
+                // Initialize the main app
+                if (window.app) {
+                    window.app.currentUser = user;
+                    window.app.dbConnected = dbConnected;
+                }
+            }
+            
+            redirectToLogin() {
+                window.location.href = '/login.html';
+            }
+        }
+        
+        // Start authentication check
+        document.addEventListener('DOMContentLoaded', () => {
+            new AuthManager();
+        });
+    </script> 
+
+    <!-- Project Modal -->
+<div id="project-modal" class="modal" tabindex="-1" style="display:none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="project-modal-title">Edit Project</h5>
+                <button type="button" class="btn-close" onclick="document.getElementById('project-modal').style.display='none'"></button>
+            </div>
+            <form id="project-form">
+                <div class="modal-body">
+                    <input type="hidden" id="project-id" name="project-id">
+                    <div class="mb-3">
+                        <label for="project-name" class="form-label">Project Name</label>
+                        <input type="text" class="form-control" id="project-name" name="project-name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-customer" class="form-label">Customer</label>
+                        <select class="form-control" id="project-customer" name="project-customer" required>
+                            <option value="">Select a customer</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-status" class="form-label">Status</label>
+                        <select class="form-control" id="project-status" name="project-status">
+                            <option value="" disabled selected>Select Status</option>
+                            <option value="Awaiting Customer feedback">Awaiting Customer Feedback</option>
+                            <option value="Awaiting Engineering">Awaiting Engineering</option>
+                            <option value="Awaiting payment">Awaiting Payment</option>
+                            <option value="Bid Only">Bid Only</option>
+                            <option value="Cancelled">Cancelled</option>
+                            <option value="Completed">Completed</option>
+                            <option value="Needs Attention">Needs Attention</option>
+                            <option value="On Hold">On Hold</option>
+                            <option value="Submitted">Submitted (In for Permit)</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-start-date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="project-start-date-modal" name="project-start-date" onchange="app.updateModalEndDateMin(this.value)" oninput="app.updateModalEndDateMin(this.value)">
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-estimated-completion" class="form-label">Estimated Completion</label>
+                        <input type="date" class="form-control" id="project-estimated-completion-modal" name="project-estimated-completion" onchange="app.validateModalEndDate()" oninput="app.validateModalEndDate()">
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-description" class="form-label">Description</label>
+                        <textarea class="form-control" id="project-description" name="project-description"></textarea>
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-total-contract-amount" class="form-label">Contract Amount</label>
+                        <input type="number" class="form-control" id="project-total-contract-amount" name="project-total-contract-amount">
+                    </div>
+                    
+                    <!-- Address Section with Checkbox -->
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="same-as-customer-address" onchange="app.toggleProjectAddress(this.checked)">
+                            <label class="form-check-label" for="same-as-customer-address">
+                                <strong>Project address is the same as customer address</strong>
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="project-address" class="form-label">Address</label>
+                        <input type="text" class="form-control" id="project-address" name="project-address">
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-city" class="form-label">City</label>
+                        <input type="text" class="form-control" id="project-city" name="project-city">
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-state" class="form-label">State</label>
+                        <input type="text" class="form-control" id="project-state" name="project-state">
+                    </div>
+                    <div class="mb-3">
+                        <label for="project-zip" class="form-label">ZIP</label>
+                        <input type="text" class="form-control" id="project-zip" name="project-zip">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('project-modal').style.display='none'">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="project-modal-submit">Save Project</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Pay Terms Modal -->
+<div id="payterm-modal" class="modal" tabindex="-1" style="display:none;">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="payterm-modal-title">Create Pay Terms</h5>
+                <button type="button" class="btn-close" onclick="app.closePayTermModal()"></button>
+            </div>
+            <form id="payterm-form" onsubmit="app.savePayTerm(event)">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="payterm-project" class="form-label">Project</label>
+                        <select class="form-control" id="payterm-project" name="project-id" required>
+                            <option value="">Select Project</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="payterm-estimate" class="form-label">Estimate</label>
+                        <select class="form-control" id="payterm-estimate" name="estimate-id">
+                            <option value="">Select Estimate</option>
+                        </select>
+                        <div id="estimate-total" class="text-muted mt-1"></div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Payment Structure</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment-type" id="payment-100" value="100_at_acceptance" checked>
+                            <label class="form-check-label" for="payment-100">
+                                100% due at contract acceptance
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment-type" id="payment-75-25" value="75_25_split">
+                            <label class="form-check-label" for="payment-75-25">
+                                75% at contract acceptance, 25% at permit submittal
+                            </label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="payment-type" id="payment-custom" value="custom">
+                            <label class="form-check-label" for="payment-custom">
+                                Custom payment terms
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Standard Payment Preview -->
+                    <div id="payment-preview" class="mb-3" style="display:none;">
+                        <div class="card">
+                            <div class="card-header">
+                                <h6 class="mb-0">Payment Schedule Preview</h6>
+                            </div>
+                            <div class="card-body">
+                                <div id="payment-schedule"></div>
+                                <div class="mt-2">
+                                    <strong>Total: $<span id="total-amount">0.00</span></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Custom Payment Fields -->
+                    <div id="custom-payment-fields" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label for="payterm-name" class="form-label">Pay Term Name</label>
+                                <input type="text" class="form-control" id="payterm-name" name="payterm-name">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="payterm-type" class="form-label">Type</label>
+                                <select class="form-control" id="payterm-type" name="payterm-type">
+                                    <option value="Contract Acceptance">Contract Acceptance</option>
+                                    <option value="Permit Submittal">Permit Submittal</option>
+                                    <option value="Project Start">Project Start</option>
+                                    <option value="Project Completion">Project Completion</option>
+                                    <option value="Custom">Custom</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="payterm-percentage" class="form-label">Percentage (%)</label>
+                                <input type="number" class="form-control" id="payterm-percentage" name="payterm-percentage" min="0" max="100" step="0.01">
+                            </div>
+                            <div class="col-md-6">
+                                <label for="payterm-amount" class="form-label">Fixed Amount ($)</label>
+                                <input type="number" class="form-control" id="payterm-amount" name="payterm-amount" min="0" step="0.01">
+                            </div>
+                        </div>
+                        <div class="row mt-3">
+                            <div class="col-md-6">
+                                <label for="payterm-due-date" class="form-label">Due Date</label>
+                                <input type="date" class="form-control" id="payterm-due-date" name="payterm-due-date">
+                            </div>
+                        </div>
+                        <div class="mt-3">
+                            <label for="payterm-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="payterm-description" name="payterm-description" rows="3"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="app.closePayTermModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="payterm-submit">Create Pay Terms</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
