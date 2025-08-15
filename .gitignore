@@ -2,11 +2,14 @@
 node_modules/
 npm-debug.log*
 
-# Environment variables
+# Environment variables (IMPORTANT: keeps your passwords safe!)
 .env
 .env.local
 .env.development.local
 .env.test.local
+.env.production.local
+.env.azure
+.env.vercel
 
 # Logs
 logs
@@ -16,6 +19,7 @@ logs
 *.db
 *.sqlite
 *.sqlite3
+architecture.db
 
 # Temporary files
 tmp/
@@ -26,11 +30,24 @@ test-*.js
 test-*.html
 *test*.js
 check-*.js
+export-*.js
 
 # Backup files
 *.backup
 *.bak
+azure-backup/
+
+# Upload directories with user content
+uploads/
+!uploads/.gitkeep
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+
+# Sessions
+sessions/
