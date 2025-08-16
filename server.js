@@ -123,6 +123,11 @@ app.get('/contract-signing/:contractId', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'contract-signing.html'));
 });
 
+// Basic health check (Railway compatible)
+app.get('/health', (req, res) => {
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Health check endpoint
 app.get('/api/health', async (req, res) => {
     try {
@@ -159,10 +164,13 @@ app.use((error, req, res, next) => {
 // Start server
 const server = app.listen(PORT, '0.0.0.0', async () => {
     console.log(`🚀 Server starting on port ${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-    console.log(`🗄️ Database type: ${process.env.DB_TYPE || 'sqlite'}`);
-    console.log(`🔗 Database URL: ${process.env.DATABASE_URL ? 'Set ✅' : 'Missing ❌'}`);
-    console.log(`Visit http://localhost:${PORT} to view the application`);
+    
+    if (process.env.NODE_ENV !== 'production') {
+        console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+        console.log(`🗄️ Database type: ${process.env.DB_TYPE || 'sqlite'}`);
+        console.log(`🔗 Database URL: ${process.env.DATABASE_URL ? 'Set ✅' : 'Missing ❌'}`);
+        console.log(`Visit http://localhost:${PORT} to view the application`);
+    }
     
     try {
         console.log('🔌 Attempting database connection...');
@@ -171,7 +179,9 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
         console.log('🎉 Server is ready to handle requests!');
     } catch (error) {
         console.error('⚠️ Database connection failed:', error.message);
-        console.error('Stack trace:', error.stack);
+        if (process.env.NODE_ENV !== 'production') {
+            console.error('Stack trace:', error.stack);
+        }
         console.log('Server will continue to run without database features');
     }
 });

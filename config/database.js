@@ -7,7 +7,8 @@ class Database {
     constructor() {
         this.pool = null;
         this.sqliteDb = null;
-        this.dbType = process.env.DB_TYPE || 'sqlite';
+        // Temporarily force SQLite to get app working
+        this.dbType = 'sqlite'; // process.env.DB_TYPE || 'sqlite';
     }
 
     async connect() {

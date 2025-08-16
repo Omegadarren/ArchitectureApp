@@ -4,10 +4,10 @@
   "description": "Complete project management system for architecture firms with customer tracking, project management, estimates, invoices, and contracts",
   "main": "server.js",
   "scripts": {
-    "start": "node ultra-minimal.js",
+    "start": "node server.js",
     "debug": "node debug-server.js",
     "minimal": "node minimal-server.js",
-    "main": "node server.js",
+    "ultra": "node ultra-minimal.js",
     "build": "echo 'No build step required'",
     "dev": "nodemon server.js"
   },
