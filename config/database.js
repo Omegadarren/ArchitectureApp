@@ -130,6 +130,43 @@ class Database {
                     if (err) console.error('Table creation error:', err);
                 });
             });
+
+            // Create default admin user after tables are created
+            this.createDefaultAdminUser();
+        }
+    }
+
+    async createDefaultAdminUser() {
+        try {
+            const bcrypt = require('bcryptjs');
+            
+            // Check if admin user already exists
+            this.sqliteDb.get('SELECT Username FROM Users WHERE Username = ?', ['admin'], async (err, row) => {
+                if (err) {
+                    console.error('Error checking for admin user:', err);
+                    return;
+                }
+                
+                if (!row) {
+                    // Admin user doesn't exist, create it
+                    const hashedPassword = await bcrypt.hash('admin', 10);
+                    this.sqliteDb.run(
+                        'INSERT INTO Users (Username, Password, FirstName, LastName, Email) VALUES (?, ?, ?, ?, ?)',
+                        ['admin', hashedPassword, 'Admin', 'User', 'admin@company.com'],
+                        (err) => {
+                            if (err) {
+                                console.error('Error creating admin user:', err);
+                            } else {
+                                console.log('✅ Default admin user created (admin/admin)');
+                            }
+                        }
+                    );
+                } else {
+                    console.log('✅ Admin user already exists');
+                }
+            });
+        } catch (error) {
+            console.error('Error in createDefaultAdminUser:', error);
         }
     }
 
