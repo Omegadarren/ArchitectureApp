@@ -33,9 +33,9 @@ router.post('/', async (req, res) => {
         const { FirstName, LastName, CompanyName, Email, Phone, Address, City, State, Zip } = req.body;
         
         const result = await database.query(
-            INSERT INTO Customers (FirstName, LastName, CompanyName, Email, Phone, Address, City, State, Zip)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        , [FirstName, LastName, CompanyName, Email, Phone, Address, City, State, Zip]);
+            'INSERT INTO Customers (FirstName, LastName, CompanyName, Email, Phone, Address, City, State, Zip) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [FirstName, LastName, CompanyName, Email, Phone, Address, City, State, Zip]
+        );
         
         res.status(201).json({ message: 'Customer created successfully', id: result.lastID });
     } catch (error) {
