@@ -2366,28 +2366,43 @@ class ArchitectureApp {
     async loadDashboard() {
         try {
             // Load dashboard stats - include estimates for project contract calculations
-            const [customers, projects, invoices, overdueInvoices, estimates] = await Promise.all([
+            const [customers, projects, estimates] = await Promise.all([
                 this.apiCall('customers'),
-                this.apiCall('projects'),
-                this.apiCall('invoices'),
-                this.apiCall('invoices/reports/overdue'),
+                this.apiCall('projects'), 
                 this.apiCall('estimates')
             ]);
             
+            // Load invoices separately and handle errors gracefully
+            let invoices = [];
+            try {
+                invoices = await this.apiCall('invoices');
+            } catch (error) {
+                console.warn('Could not load invoices:', error);
+                invoices = [];
+            }
+            
             // Store data for use in dashboard and other sections
-            this.data.customers = customers;
-            this.data.projects = projects;
-            this.data.estimates = estimates;
-            console.log('Dashboard loaded with', projects.length, 'projects and', estimates.length, 'estimates');
+            this.data.customers = customers || [];
+            this.data.projects = projects || [];
+            this.data.estimates = estimates || [];
+            this.data.invoices = invoices || [];
+            
+            console.log('Dashboard loaded with', this.data.projects.length, 'projects and', this.data.estimates.length, 'estimates');
             
             // Group projects by status for dashboard cards
-            this.renderDashboardProjectGroups(projects);
+            this.renderDashboardProjectGroups(this.data.projects);
 
             // Setup dashboard search functionality
             this.setupDashboardSearch();
 
         } catch (error) {
             console.error('Error loading dashboard:', error);
+            // Initialize with empty data to prevent further errors
+            this.data.customers = [];
+            this.data.projects = [];
+            this.data.estimates = [];
+            this.data.invoices = [];
+            this.renderDashboardProjectGroups([]);
         }
     }
 
