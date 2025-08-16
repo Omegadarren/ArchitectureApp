@@ -6533,27 +6533,45 @@ class ArchitectureApp {
 
     showToast(message, type = 'info') {
         const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            console.warn('Toast container not found');
+            return;
+        }
+        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerText = message;
         toastContainer.appendChild(toast);
 
+        // Show toast with animation
+        setTimeout(() => toast.classList.add('show'), 100);
+
         // Auto-dismiss toast after 3 seconds
         setTimeout(() => {
-            toast.remove();
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
         }, 3000);
     }
 
     showToastLong(message, type = 'info') {
         const toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            console.warn('Toast container not found');
+            return;
+        }
+        
         const toast = document.createElement('div');
         toast.className = `toast toast-${type}`;
         toast.innerText = message;
         toastContainer.appendChild(toast);
 
+        // Show toast with animation
+        setTimeout(() => toast.classList.add('show'), 100);
+
         // Auto-dismiss toast after 6 seconds (longer for important messages)
         setTimeout(() => {
-            toast.remove();
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
         }, 6000);
     }
 
