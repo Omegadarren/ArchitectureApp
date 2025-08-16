@@ -8756,15 +8756,21 @@ class ArchitectureApp {
             
             if (response.ok) {
                 this.showToast('Logged out successfully', 'success');
-                setTimeout(() => {
-                    window.location.href = '/login.html';
-                }, 1000);
+                this.currentUser = null;
+                
+                // Show login section and hide app
+                document.getElementById('login-section').classList.remove('d-none');
+                document.getElementById('app-container').classList.add('d-none');
+                
+                // Clear form fields
+                document.getElementById('username').value = '';
+                document.getElementById('password').value = '';
             } else {
-                throw new Error('Logout failed');
+                this.showToast('Logout failed', 'error');
             }
         } catch (error) {
             console.error('Logout error:', error);
-            this.showToast('Error logging out', 'error');
+            this.showToast('Logout failed', 'error');
         }
     }
 
