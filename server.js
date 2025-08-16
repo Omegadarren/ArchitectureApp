@@ -28,6 +28,27 @@ app.use(cors({
     credentials: true
 }));
 
+// Security headers
+app.use((req, res, next) => {
+    // Content Security Policy
+    res.setHeader('Content-Security-Policy', 
+        "default-src 'self'; " +
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com; " +
+        "font-src 'self' https://cdnjs.cloudflare.com data:; " +
+        "img-src 'self' data: https:; " +
+        "connect-src 'self'; " +
+        "frame-src 'none';"
+    );
+    
+    // Other security headers
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    
+    next();
+});
+
 // Session management
 app.use(session({
     store: new SQLiteStore({
