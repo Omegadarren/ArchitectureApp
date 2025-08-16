@@ -79,8 +79,26 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
+// Favicon route - serve as data URL to match CSP
+app.get('/favicon.ico', (req, res) => {
+    res.set('Content-Type', 'image/svg+xml');
+    res.set('Cache-Control', 'public, max-age=86400'); // Cache for 24 hours
+    const favicon = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏗️</text></svg>`;
+    res.send(favicon);
+});
+
 // Root route - always serve the SPA
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// Catch any other routes and serve the SPA (for client-side routing)
+app.get('*', (req, res, next) => {
+    // Skip API routes
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+        return next();
+    }
+    // For any other route, serve the SPA
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
