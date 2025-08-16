@@ -1644,15 +1644,10 @@ class ArchitectureApp {
         // Apply mobile optimizations first
         this.applyMobileOptimizations();
         
-        // Load settings first, then initialize the rest of the app
-        await this.loadSettings();
+        // Initialize basic components first
         this.initializeImportHandlers();
         this.setupEventListeners();
-        this.initializeAuthHandlers();
-        this.initMobileNav(); // Initialize mobile navigation
-        this.loadDashboard();
-        this.loadCustomers(); // Load customers for dropdowns
-        this.loadLineItems(); // Load line items for dropdowns
+        this.initializeAuthHandlers(); // This will check auth and load data if authenticated
         
         // Initialize address autocomplete
         setTimeout(() => {
@@ -2779,6 +2774,12 @@ class ArchitectureApp {
         console.log('Sidebar overlay:', sidebarOverlay);
         console.log('App container:', appContainer);
         console.log('Nav links found:', navLinks.length);
+
+        // Only initialize if elements exist (after authentication)
+        if (!menuToggle || !document.getElementById('app-container')) {
+            console.log('Mobile nav elements not available yet, will initialize after authentication');
+            return;
+        }
 
         if (menuToggle) {
             // Add both click and touchstart for better mobile support
@@ -7993,15 +7994,25 @@ class ArchitectureApp {
     async loadSettings() {
         try {
             const response = await this.apiCall('settings');
-            this.settings = response;
+            this.settings = response || {};
             this.renderSettings();
         } catch (error) {
             console.error('Error loading settings:', error);
-            this.showToast('Error loading settings', 'error');
+            // Initialize with empty settings if loading fails (e.g., not authenticated)
+            this.settings = {};
+            // Only show error toast if we're actually authenticated and this isn't a 401
+            if (this.currentUser) {
+                this.showToast('Error loading settings', 'error');
+            }
         }
     }
 
     renderSettings() {
+        // Only render if settings element exists and we have settings data
+        if (!this.settings || !document.getElementById('company-name')) {
+            return;
+        }
+        
         // Populate company information fields
         document.getElementById('company-name').value = this.settings.company_name || '';
         document.getElementById('company-address').value = this.settings.company_address || '';
@@ -8731,8 +8742,14 @@ class ArchitectureApp {
                     userNameElement.textContent = data.user.firstName || data.user.username;
                 }
                 
-                // Load dashboard
+                // Load all data after authentication
+                await this.loadSettings();
                 this.loadDashboard();
+                this.loadCustomers(); // Load customers for dropdowns
+                this.loadLineItems(); // Load line items for dropdowns
+                
+                // Initialize mobile navigation now that app container is visible
+                this.initMobileNav();
             } else {
                 this.showToast(data.error || 'Login failed', 'error');
             }
@@ -8764,8 +8781,14 @@ class ArchitectureApp {
                     userNameElement.textContent = data.user.firstName || data.user.username;
                 }
                 
-                // Load dashboard
+                // Load all data after authentication
+                await this.loadSettings();
                 this.loadDashboard();
+                this.loadCustomers(); // Load customers for dropdowns
+                this.loadLineItems(); // Load line items for dropdowns
+                
+                // Initialize mobile navigation now that app container is visible
+                this.initMobileNav();
             } else {
                 // Show login form
                 document.getElementById('login-section').classList.remove('d-none');
