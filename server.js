@@ -58,22 +58,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // Serve uploaded files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
-// Root route - redirect to login if not authenticated
+// Root route - always serve the SPA
 app.get('/', (req, res) => {
-    if (req.session && req.session.user) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    } else {
-        res.redirect('/login.html');
-    }
-});
-
-// Login page - redirect to app if already authenticated
-app.get('/login.html', (req, res) => {
-    if (req.session && req.session.user) {
-        res.redirect('/');
-    } else {
-        res.sendFile(path.join(__dirname, 'public', 'login.html'));
-    }
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 // API Routes

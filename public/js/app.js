@@ -8632,12 +8632,117 @@ class ArchitectureApp {
 
     // Initialize authentication handlers
     initializeAuthHandlers() {
+        // Login form handler
+        const loginForm = document.getElementById('login-form');
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                await this.handleLogin();
+            });
+        }
+
+        // Logout button handler
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async (e) => {
+                e.preventDefault();
+                await this.logout();
+            });
+        }
+
         // Password modal close button handler
         const closeButton = document.querySelector('.password-modal-close');
         if (closeButton) {
             closeButton.addEventListener('click', () => {
                 this.closePasswordModal();
             });
+        }
+
+        // Check if user is already authenticated
+        this.checkAuthStatus();
+    }
+
+    // Handle login form submission
+    async handleLogin() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+
+        if (!username || !password) {
+            this.showToast('Please enter both username and password', 'error');
+            return;
+        }
+
+        try {
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                this.showToast('Login successful!', 'success');
+                this.currentUser = data.user;
+                
+                // Hide login section and show app
+                document.getElementById('login-section').classList.add('d-none');
+                document.getElementById('app-container').classList.remove('d-none');
+                
+                // Update user name in navbar
+                const userNameElement = document.getElementById('user-name');
+                if (userNameElement) {
+                    userNameElement.textContent = data.user.firstName || data.user.username;
+                }
+                
+                // Load dashboard
+                this.loadDashboard();
+            } else {
+                this.showToast(data.error || 'Login failed', 'error');
+            }
+        } catch (error) {
+            console.error('Login error:', error);
+            this.showToast('Login failed. Please try again.', 'error');
+        }
+    }
+
+    // Check authentication status
+    async checkAuthStatus() {
+        try {
+            const response = await fetch('/api/auth/check', {
+                credentials: 'include'
+            });
+            
+            const data = await response.json();
+            
+            if (data.authenticated) {
+                this.currentUser = data.user;
+                
+                // Hide login section and show app
+                document.getElementById('login-section').classList.add('d-none');
+                document.getElementById('app-container').classList.remove('d-none');
+                
+                // Update user name in navbar
+                const userNameElement = document.getElementById('user-name');
+                if (userNameElement) {
+                    userNameElement.textContent = data.user.firstName || data.user.username;
+                }
+                
+                // Load dashboard
+                this.loadDashboard();
+            } else {
+                // Show login form
+                document.getElementById('login-section').classList.remove('d-none');
+                document.getElementById('app-container').classList.add('d-none');
+            }
+        } catch (error) {
+            console.error('Auth check error:', error);
+            // Show login form on error
+            document.getElementById('login-section').classList.remove('d-none');
+            document.getElementById('app-container').classList.add('d-none');
         }
     }
 

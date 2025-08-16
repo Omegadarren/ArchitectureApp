@@ -1,83 +1,44 @@
-const sql = require('mssql');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 require('dotenv').config();
 
-// Azure SQL config
-const config = {
-    server: process.env.DB_SERVER,
-    database: process.env.DB_DATABASE,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    port: parseInt(process.env.DB_PORT),
-    options: {
-        encrypt: true, // Use encryption for Azure
-        trustServerCertificate: false // Don't trust self-signed certificates
-    },
-    pool: {
-        max: 10,
-        min: 0,
-        idleTimeoutMillis: 30000
-    }
-};
-
 class Database {
     constructor() {
-        this.pool = null;
         this.sqliteDb = null;
-        this.useAzure = process.env.DB_SERVER && process.env.NODE_ENV !== 'development';
     }
 
     async connect() {
         try {
-            if (this.useAzure) {
-                // Try Azure SQL first
-                if (this.pool && this.pool.connected) {
-                    console.log('Database already connected, reusing existing connection');
-                    return this.pool;
-                }
-                
-                this.pool = await sql.connect(config);
-                console.log('Connected to Azure SQL Database');
-                return this.pool;
-            } else {
-                // Fallback to SQLite for development/deployment
-                if (this.sqliteDb) {
-                    console.log('SQLite database already connected');
-                    return this.sqliteDb;
-                }
-                
-                const dbPath = process.env.NODE_ENV === 'production' 
-                    ? '/tmp/architecture.db' 
-                    : path.join(__dirname, '..', 'architecture.db');
-                
-                return new Promise((resolve, reject) => {
-                    this.sqliteDb = new sqlite3.Database(dbPath, (err) => {
-                        if (err) {
-                            console.error('SQLite connection failed:', err);
-                            reject(err);
-                        } else {
-                            console.log('Connected to SQLite database');
-                            this.initializeTables();
-                            resolve(this.sqliteDb);
-                        }
-                    });
-                });
+            // Use SQLite only
+            if (this.sqliteDb) {
+                console.log('SQLite database already connected');
+                return this.sqliteDb;
             }
+            
+            const dbPath = process.env.NODE_ENV === 'production' 
+                ? '/tmp/architecture.db' 
+                : path.join(__dirname, '..', 'architecture.db');
+            
+            return new Promise((resolve, reject) => {
+                this.sqliteDb = new sqlite3.Database(dbPath, (err) => {
+                    if (err) {
+                        console.error('SQLite connection failed:', err);
+                        reject(err);
+                    } else {
+                        console.log('Connected to SQLite database');
+                        this.initializeTables();
+                        resolve(this.sqliteDb);
+                    }
+                });
+            });
         } catch (error) {
             console.error('Database connection failed:', error);
-            // Fallback to SQLite if Azure fails
-            if (this.useAzure) {
-                console.log('Falling back to SQLite...');
-                this.useAzure = false;
-                return this.connect();
-            }
             throw error;
         }
     }
 
     initializeTables() {
-        if (!this.useAzure && this.sqliteDb) {
+        if (this.sqliteDb) {
             // Create basic tables for SQLite
             const tables = [
                 `CREATE TABLE IF NOT EXISTS Users (
@@ -94,23 +55,37 @@ class Database {
                     FirstName TEXT,
                     LastName TEXT,
                     CompanyName TEXT,
+                    ContactName TEXT,
                     Email TEXT,
                     Phone TEXT,
+                    ContactName2 TEXT,
+                    Email2 TEXT,
+                    Phone2 TEXT,
                     Address TEXT,
                     City TEXT,
                     State TEXT,
-                    Zip TEXT,
+                    ZipCode TEXT,
+                    Status TEXT DEFAULT 'active',
                     CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
                 )`,
                 `CREATE TABLE IF NOT EXISTS Projects (
                     ProjectID INTEGER PRIMARY KEY AUTOINCREMENT,
                     CustomerID INTEGER,
                     ProjectName TEXT,
+                    ProjectDescription TEXT,
+                    ProjectContactName TEXT,
+                    ProjectContactPhone TEXT,
+                    ProjectContactEmail TEXT,
                     ProjectAddress TEXT,
                     ProjectCity TEXT,
                     ProjectState TEXT,
                     ProjectZip TEXT,
-                    Status TEXT DEFAULT 'Active',
+                    StartDate DATE,
+                    EstimatedCompletionDate DATE,
+                    ActualCompletionDate DATE,
+                    ProjectStatus TEXT DEFAULT 'Active',
+                    ProjectPriority INTEGER DEFAULT 0,
+                    TotalContractAmount DECIMAL(10,2) DEFAULT 0,
                     CreatedDate DATETIME DEFAULT CURRENT_TIMESTAMP
                 )`,
                 `CREATE TABLE IF NOT EXISTS Estimates (
@@ -155,28 +130,14 @@ class Database {
                     if (err) console.error('Table creation error:', err);
                 });
             });
-
-            // Insert default admin user if not exists
-            this.sqliteDb.run(`INSERT OR IGNORE INTO Users (Username, Password, FirstName, LastName, Email) VALUES (?, ?, ?, ?, ?)`, 
-                ['admin', '$2b$10$rQJ5D1mZqYQJ5D1mZqYQJ5D1mZqYQJ5D1mZqYQJ5D1mZqYQJ5D1mZq', 'Admin', 'User', 'admin@company.com']);
         }
     }
 
-    async query(queryString, params = {}) {
+    async query(queryString, params = []) {
         try {
             await this.connect();
 
-            if (this.useAzure && this.pool) {
-                // Azure SQL query
-                const request = this.pool.request();
-                
-                Object.keys(params).forEach(key => {
-                    request.input(key, params[key]);
-                });
-                
-                const result = await request.query(queryString);
-                return result;
-            } else if (this.sqliteDb) {
+            if (this.sqliteDb) {
                 // SQLite query - convert Azure SQL syntax to SQLite
                 let sqliteQuery = queryString
                     .replace(/TOP\s+(\d+)/gi, 'LIMIT $1')
@@ -186,12 +147,12 @@ class Database {
 
                 return new Promise((resolve, reject) => {
                     if (sqliteQuery.trim().toUpperCase().startsWith('SELECT')) {
-                        this.sqliteDb.all(sqliteQuery, Object.values(params), (err, rows) => {
+                        this.sqliteDb.all(sqliteQuery, params, (err, rows) => {
                             if (err) reject(err);
                             else resolve({ recordset: rows });
                         });
                     } else {
-                        this.sqliteDb.run(sqliteQuery, Object.values(params), function(err) {
+                        this.sqliteDb.run(sqliteQuery, params, function(err) {
                             if (err) reject(err);
                             else resolve({ rowsAffected: [this.changes] });
                         });
@@ -206,11 +167,7 @@ class Database {
 
     async close() {
         try {
-            if (this.pool && this.useAzure) {
-                await this.pool.close();
-                console.log('Azure SQL Database connection closed');
-            }
-            if (this.sqliteDb && !this.useAzure) {
+            if (this.sqliteDb) {
                 this.sqliteDb.close((err) => {
                     if (err) console.error('SQLite close error:', err);
                     else console.log('SQLite database connection closed');
