@@ -165,18 +165,8 @@ const server = app.listen(PORT, '0.0.0.0', async () => {
     try {
         await database.connect();
         console.log('✅ Database connected successfully');
-        
-        // Initialize database with admin user if in production (Railway)
-        if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
-            console.log('🔧 Running database initialization for production...');
-            try {
-                const { initializeRailwayDatabase } = require('./init-db');
-                await initializeRailwayDatabase();
-                console.log('✅ Production database initialization complete');
-            } catch (initError) {
-                console.error('⚠️ Database initialization failed:', initError.message);
-            }
-        }
+        console.log(`📊 Database type: ${process.env.DB_TYPE || 'sqlite'}`);
+        console.log('🎉 Server is ready to handle requests!');
     } catch (error) {
         console.error('⚠️ Database connection failed:', error.message);
         console.log('Server will continue to run without database features');
