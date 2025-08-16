@@ -2332,10 +2332,10 @@ class ArchitectureApp {
             const response = await fetch(`/api/${endpoint}`, options);
             
             if (response.status === 401) {
-                // Authentication failed, redirect to login
+                // Authentication failed, show login section
                 this.showToast('Session expired. Please log in again.', 'error');
                 setTimeout(() => {
-                    window.location.href = '/login.html';
+                    this.logout();
                 }, 2000);
                 return null;
             }
